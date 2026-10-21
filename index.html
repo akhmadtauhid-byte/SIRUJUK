@@ -111,7 +111,7 @@ function logout(expired){
 }
 function renderLogin(note){
   $('#app').innerHTML = `<div class="login"><div class="card">
-  <h2 style="text-align:center">${esc(APP.nama)}</h2><div class="muted" style="text-align:center">Sistem Fee Rujukan${APP.instansi?' • '+esc(APP.instansi):''}</div>
+  <h2 style="text-align:center">${esc(APP.nama)}</h2><div class="muted" style="text-align:center">Sistem Rujukan${APP.instansi?' • '+esc(APP.instansi):''}</div>
   <div class="tabs"><button type="button" id="rP" class="${S.role==='PERUJUK'?'on':''}">Perujuk</button><button type="button" id="rA" class="${S.role==='ADMIN'?'on':''}">Admin</button></div>
   ${note?`<div class="msg inf">${esc(note)}</div>`:''}<div id="lerr"></div>
   <form id="lf"><label>ID Pengguna</label><input name="id" autocomplete="username" required placeholder="${S.role==='ADMIN'?'contoh: admin':'contoh: P001'}">
@@ -154,6 +154,15 @@ function rujukanItem(r, admin){
   return `<div class="item"><div><b>${esc(r.nama_pasien)}</b> ${badge(r.status)}<br><small>${esc(r.tgl_kunjungan)} • ${esc(r.layanan)} • ${esc(r.jenis_pasien)}${admin?' • '+esc(r.nama_perujuk):''}</small>${r.alasan_tolak?`<br><small style="color:var(--bad)">Alasan: ${esc(r.alasan_tolak)}</small>`:''}</div><div class="r">${admin&&(r.status==='TERVERIFIKASI'||r.status==='DIBAYAR')?`<b>${rp(r.fee)}</b><br>`:''}<small>${esc(r.id)}</small></div></div>`;
 }
 
+function miripBadge(r){
+  if(!r.mirip||!r.mirip.length) return '';
+  return `<br><span class="badge b-warn">⚠ Mungkin pasien sama (${r.mirip.length})</span> <small>${esc(r.mirip.map(m=>m.nama_perujuk+' – '+(STAT[m.status]||[m.status])[0].toLowerCase()).join('; '))}</small>`;
+}
+function miripPanel(list){
+  if(!list||!list.length) return '';
+  return `<div class="msg" style="background:var(--warnbg);color:var(--warn)"><b>⚠ Kemungkinan pasien yang sama juga dirujuk perujuk lain</b>${list.map(m=>`<div style="margin-top:6px">${esc(m.nama_perujuk)} • ${esc(m.tgl_kunjungan)} • ${esc(m.layanan)} • ${esc((STAT[m.status]||[m.status])[0])} ${m.tingkat==='SAMA'?'<b>(layanan &amp; tanggal sama)</b>':''}<br><small>${esc(m.id)}</small></div>`).join('')}</div>`;
+}
+
 /* ============ PERUJUK ============ */
 async function vHome(){
   const d = await api('home'); const s=d.ringkas;
@@ -185,13 +194,14 @@ async function vInput(){
   };
 }
 async function vRiwayat(){
-  view(`<h2>Riwayat Rujukan</h2><div class="card"><select id="fs">${opts([{v:'BARU',l:'Menunggu'},{v:'TERVERIFIKASI',l:'Terverifikasi'},{v:'DIBAYAR',l:'Dibayar'},{v:'DITOLAK',l:'Ditolak'}],'','Semua status')}</select></div><div class="card" id="lst"></div>`);
-  const load=async()=>{ $('#lst').innerHTML='<div class="empty">Memuat…</div>'; try{ const d=await api('rujukan',{status:$('#fs').value}); $('#lst').innerHTML=d.rows.length?d.rows.map(r=>rujukanItem(r)).join('')+(d.total>d.rows.length?`<div class="muted">Menampilkan ${d.rows.length} dari ${d.total}</div>`:''):'<div class="empty">Tidak ada data</div>'; }catch(x){ $('#lst').innerHTML=err(x); } };
-  $('#fs').onchange=load; load();
+  view(`<h2>Riwayat Rujukan</h2><div class="card"><select id="fs">${opts([{v:'BARU',l:'Menunggu'},{v:'TERVERIFIKASI',l:'Terverifikasi'},{v:'DIBAYAR',l:'Dibayar'},{v:'DITOLAK',l:'Ditolak'}],'','Semua status')}</select>
+  <div class="row"><div><label>Dari tgl kunjungan</label><input id="rfd" type="date"></div><div><label>Sampai</label><input id="rtd" type="date"></div></div></div><div class="card" id="lst"></div>`);
+  const load=async()=>{ $('#lst').innerHTML='<div class="empty">Memuat…</div>'; try{ const d=await api('rujukan',{status:$('#fs').value,from:$('#rfd').value,to:$('#rtd').value}); $('#lst').innerHTML=d.rows.length?d.rows.map(r=>rujukanItem(r)).join('')+(d.total>d.rows.length?`<div class="muted">Menampilkan ${d.rows.length} dari ${d.total}</div>`:''):'<div class="empty">Tidak ada data</div>'; }catch(x){ $('#lst').innerHTML=err(x); } };
+  ['fs','rfd','rtd'].forEach(i=>$('#'+i).onchange=load); load();
 }
 async function vBayarP(){
   const rows = await api('pembayaran');
-  view(`<h2>Riwayat Pembayaran Fee</h2><div class="card">${rows.length?rows.map(p=>`<div class="item" data-p="${esc(p.id)}" style="cursor:pointer"><div><b>${esc(p.tgl_bayar)}</b><br><small>${esc(p.id)} • ${p.jumlah_rujukan} rujukan • ${esc(p.metode)}</small></div><div class="r"><b>${rp(p.total)}</b></div></div>`).join(''):'<div class="empty">Belum ada pembayaran</div>'}</div>`);
+  view(`<h2>Riwayat Pembayaran</h2><div class="card">${rows.length?rows.map(p=>`<div class="item" data-p="${esc(p.id)}" style="cursor:pointer"><div><b>${esc(p.tgl_bayar)}</b><br><small>${esc(p.id)} • ${p.jumlah_rujukan} rujukan • ${esc(p.metode)}</small></div><div class="r"><b>${rp(p.total)}</b></div></div>`).join(''):'<div class="empty">Belum ada pembayaran</div>'}</div>`);
   document.querySelectorAll('[data-p]').forEach(el=>el.onclick=()=>detailBayar(el.dataset.p, S.user.role==='ADMIN'));
 }
 async function detailBayar(id, admin){
@@ -225,10 +235,19 @@ async function aDash(){
 }
 let VERIF=[];
 async function aVerif(){
-  const d = await api('rujukan',{status:'BARU'}); VERIF=d.rows.slice().reverse();
-  view(`<h2>Verifikasi Rujukan</h2><div class="muted" style="margin-bottom:8px">Cocokkan dengan data SIMRS (nama, tanggal, layanan, jenis pasien) sebelum memverifikasi.</div>
-  <div class="card">${VERIF.length?VERIF.map(r=>`<div class="item"><div><b>${esc(r.nama_pasien)}</b> <small>${esc(r.no_rm?'RM '+r.no_rm:'')}</small><br><small>${esc(r.tgl_kunjungan)} • ${esc(r.layanan)} • ${esc(r.jenis_pasien)}<br>Perujuk: ${esc(r.nama_perujuk)} (${esc(r.kategori_perujuk)})${r.catatan?'<br>Catatan: '+esc(r.catatan):''}</small></div><div class="r"><button class="btn sm" data-id="${esc(r.id)}">Proses</button></div></div>`).join(''):'<div class="empty">Tidak ada rujukan menunggu 🎉</div>'}</div>`);
-  document.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>openProses(b.dataset.id));
+  const m=await getMeta();
+  view(`<h2>Verifikasi Rujukan</h2><div class="muted" style="margin-bottom:8px">Cocokkan dengan data SIMRS (nama, tanggal, layanan, jenis pasien) sebelum memverifikasi. Tanda ⚠ berarti pasien yang sama juga dirujuk perujuk lain.</div>
+  <div class="card"><div class="row"><div><label style="margin-top:0">Perujuk</label><select id="vp">${opts(m.perujuk.map(p=>({v:p.id,l:p.nama})),'','Semua perujuk')}</select></div><div><label style="margin-top:0">Dari tgl kunjungan</label><input id="vf" type="date"></div><div><label style="margin-top:0">Sampai</label><input id="vt" type="date"></div></div></div>
+  <div class="card" id="vl"></div>`);
+  const load=async()=>{
+    $('#vl').innerHTML='<div class="empty">Memuat…</div>';
+    try{
+      const d=await api('rujukan',{status:'BARU',id_perujuk:$('#vp').value,from:$('#vf').value,to:$('#vt').value}); VERIF=d.rows.slice().reverse();
+      $('#vl').innerHTML=VERIF.length?VERIF.map(r=>`<div class="item"><div><b>${esc(r.nama_pasien)}</b> <small>${esc(r.no_rm?'RM '+r.no_rm:'')}</small><br><small>${esc(r.tgl_kunjungan)} • ${esc(r.layanan)} • ${esc(r.jenis_pasien)}<br>Perujuk: ${esc(r.nama_perujuk)} (${esc(r.kategori_perujuk)})${r.catatan?'<br>Catatan: '+esc(r.catatan):''}</small>${miripBadge(r)}</div><div class="r"><button class="btn sm" data-id="${esc(r.id)}">Proses</button></div></div>`).join(''):'<div class="empty">Tidak ada rujukan menunggu 🎉</div>';
+      document.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>openProses(b.dataset.id));
+    }catch(x){ $('#vl').innerHTML=err(x); }
+  };
+  ['vp','vf','vt'].forEach(i=>$('#'+i).onchange=load); load();
 }
 async function openProses(id){
   const r = VERIF.filter(x=>x.id===id)[0]; const m = await getMeta();
@@ -236,21 +255,26 @@ async function openProses(id){
   <div><b>${esc(r.nama_pasien)}</b><br><small class="muted">${esc(r.tgl_kunjungan)} • ${esc(r.nama_perujuk)} (${esc(r.kategori_perujuk)})</small></div>
   <div class="row"><div><label>Layanan</label><select id="pl">${opts(m.layanan,r.layanan)}</select></div><div><label>Jenis pasien</label><select id="pj">${opts(m.jenis,r.jenis_pasien)}</select></div></div>
   <div id="pn" style="display:none"><label>Nilai tagihan/klaim (Rp)</label><input id="pv" type="number" min="0" inputmode="numeric"></div>
+  <div id="pm"></div>
   <div class="msg inf" id="pp">Menghitung fee…</div>
-  <div class="row" style="margin-top:6px"><button class="btn" id="bv" disabled>Verifikasi</button><button class="btn bad" id="bt">Tolak</button><button class="btn sec" onclick="closeDlg()">Batal</button></div>`);
-  let fee=null;
+  <div id="pa" style="display:none"><label>Alasan tetap memverifikasi (pasien ini sudah diverifikasi/dibayar atas perujuk lain)</label><textarea id="pk" maxlength="300" placeholder="Contoh: kunjungan berbeda / rujukan awal tidak sah"></textarea></div>
+  <div class="row" style="margin-top:6px"><button class="btn" id="bv" disabled>Verifikasi</button><button class="btn bad" id="bt">Tolak</button><button class="btn sec" id="hd">Hapus</button><button class="btn sec" onclick="closeDlg()">Batal</button></div>`);
+  let fee=null, perlu=false;
+  const upd=()=>{ $('#bv').disabled = fee===null || (perlu && $('#pk').value.trim().length<5); };
   const prev=async()=>{
     try{
       const d=await api('previewFee',{id,layanan:$('#pl').value,jenis_pasien:$('#pj').value,nilai_dasar:$('#pv').value});
       $('#pn').style.display=d.perlu_nilai_dasar?'block':'none'; fee=d.fee;
+      perlu=d.perlu_alasan; $('#pm').innerHTML=miripPanel(d.mirip); $('#pa').style.display=perlu?'block':'none';
       if(!d.tarif){ $('#pp').className='msg err'; $('#pp').textContent='Belum ada aturan fee untuk kombinasi ini. Tambahkan di Master > Tarif.'; }
       else if(d.fee===null){ $('#pp').className='msg inf'; $('#pp').textContent='Aturan: '+d.tarif.nilai+'% — isi nilai tagihan/klaim.'; }
       else { $('#pp').className='msg ok'; $('#pp').innerHTML='Fee: <b>'+rp(d.fee)+'</b> ('+(d.tarif.tipe==='PERSEN'?d.tarif.nilai+'%':'nominal tetap')+')'; }
-      $('#bv').disabled = fee===null;
+      upd();
     }catch(x){ $('#pp').className='msg err'; $('#pp').textContent=x.message; $('#bv').disabled=true; }
   };
-  ['pl','pj'].forEach(i=>$('#'+i).onchange=prev); $('#pv').oninput=prev; prev();
-  $('#bv').onclick=async()=>{ $('#bv').disabled=true; try{ await api('verify',{id,layanan:$('#pl').value,jenis_pasien:$('#pj').value,nilai_dasar:$('#pv').value}); closeDlg(); toast('Terverifikasi'); aVerif(); }catch(x){ $('#de').innerHTML=err(x); $('#bv').disabled=false; } };
+  ['pl','pj'].forEach(i=>$('#'+i).onchange=prev); $('#pv').oninput=prev; $('#pk').oninput=upd; prev();
+  $('#bv').onclick=async()=>{ $('#bv').disabled=true; try{ await api('verify',{id,layanan:$('#pl').value,jenis_pasien:$('#pj').value,nilai_dasar:$('#pv').value,ket_ganda:$('#pk').value}); closeDlg(); toast('Terverifikasi'); aVerif(); }catch(x){ $('#de').innerHTML=err(x); $('#bv').disabled=false; } };
+  $('#hd').onclick=async()=>{ if(!confirm('Hapus rujukan '+id+' ('+r.nama_pasien+') secara permanen? Gunakan Tolak bila jejaknya ingin disimpan.')) return; try{ await api('rujukanDelete',{id}); closeDlg(); toast('Rujukan dihapus'); aVerif(); }catch(x){ $('#de').innerHTML=err(x); } };
   $('#bt').onclick=async()=>{ const a=prompt('Alasan penolakan:'); if(!a) return; try{ await api('reject',{id,alasan:a}); closeDlg(); toast('Ditolak'); aVerif(); }catch(x){ $('#de').innerHTML=err(x); } };
 }
 let RJ=[];
@@ -265,19 +289,23 @@ async function aRujukan(){
   <div class="card tbl" id="lst"></div>`);
   const load=async()=>{ $('#lst').innerHTML='<div class="empty">Memuat…</div>'; try{
     const d=await api('rujukan',{status:$('#fs').value,id_perujuk:$('#fp').value,from:$('#ff').value,to:$('#ft').value,q:$('#fq').value}); RJ=d.rows;
-    $('#lst').innerHTML=d.rows.length?`<div class="muted" style="margin-bottom:6px">${d.total} data${d.total>d.rows.length?' (tampil '+d.rows.length+', persempit filter)':''}</div><table><tr><th>ID</th><th>Tgl</th><th>Pasien</th><th>Layanan</th><th>Jenis</th><th>Perujuk</th><th>Status</th><th class="n">Fee</th></tr>${d.rows.map(r=>`<tr><td>${esc(r.id)}</td><td>${esc(r.tgl_kunjungan)}</td><td>${esc(r.nama_pasien)}</td><td>${esc(r.layanan)}</td><td>${esc(r.jenis_pasien)}</td><td>${esc(r.nama_perujuk)}</td><td>${badge(r.status)}</td><td class="n">${r.fee?rp(r.fee):'–'}</td></tr>`).join('')}</table>`:'<div class="empty">Tidak ada data</div>';
+    $('#lst').innerHTML=d.rows.length?`<div class="muted" style="margin-bottom:6px">${d.total} data${d.total>d.rows.length?' (tampil '+d.rows.length+', persempit filter)':''}</div><table><tr><th>ID</th><th>Tgl</th><th>Pasien</th><th>Layanan</th><th>Jenis</th><th>Perujuk</th><th>Status</th><th class="n">Fee</th><th>Ganda</th><th></th></tr>${d.rows.map(r=>`<tr><td>${esc(r.id)}</td><td>${esc(r.tgl_kunjungan)}</td><td>${esc(r.nama_pasien)}</td><td>${esc(r.layanan)}</td><td>${esc(r.jenis_pasien)}</td><td>${esc(r.nama_perujuk)}</td><td>${badge(r.status)}</td><td class="n">${r.fee?rp(r.fee):'–'}</td><td>${r.mirip&&r.mirip.length?'<span class="badge b-warn">⚠ '+r.mirip.length+'</span> <small>'+esc(r.mirip.map(m=>m.nama_perujuk).join(', '))+'</small>':''}</td><td>${r.status==='BARU'||r.status==='DITOLAK'?'<button class="btn sec sm" data-del="'+esc(r.id)+'">Hapus</button>':''}</td></tr>`).join('')}</table>`:'<div class="empty">Tidak ada data</div>';
+    document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{ if(!confirm('Hapus rujukan '+b.dataset.del+' secara permanen?')) return; try{ await api('rujukanDelete',{id:b.dataset.del}); toast('Rujukan dihapus'); load(); }catch(x){ toast(x.message); } });
   }catch(x){ $('#lst').innerHTML=err(x); } };
   $('#fgo').onclick=load; $('#fin').onclick=()=>openInputAdmin();
-  $('#fcsv').onclick=()=>{ if(!RJ.length) return toast('Tidak ada data'); csv(RJ,[['id','ID'],['tgl_kunjungan','Tgl Kunjungan'],['nama_pasien','Pasien'],['no_rm','No RM'],['jenis_pasien','Jenis Pasien'],['layanan','Layanan'],['id_perujuk','ID Perujuk'],['nama_perujuk','Perujuk'],['kategori_perujuk','Kategori'],['status','Status'],['nilai_dasar','Nilai Dasar'],['fee','Fee'],['id_pembayaran','ID Bayar']],'rujukan_'+todayStr()+'.csv'); };
+  $('#fcsv').onclick=()=>{ if(!RJ.length) return toast('Tidak ada data'); csv(RJ,[['id','ID'],['tgl_kunjungan','Tgl Kunjungan'],['nama_pasien','Pasien'],['no_rm','No RM'],['jenis_pasien','Jenis Pasien'],['layanan','Layanan'],['id_perujuk','ID Perujuk'],['nama_perujuk','Perujuk'],['kategori_perujuk','Kategori'],['status','Status'],['nilai_dasar','Nilai Dasar'],['fee','Fee'],['id_pembayaran','ID Bayar'],['ket_ganda','Alasan Ganda']],'rujukan_'+todayStr()+'.csv'); };
   load();
 }
 function openInputAdmin(){ closeDlg(); go('rujukan_input'); }
 TABS.ADMIN.push(['rujukan_input','',vInput]);
+let BP='';
 async function aBayar(){
-  const [g,h]=await Promise.all([api('payable'),api('pembayaran')]);
-  view(`<h2>Pembayaran Fee</h2><div class="muted" style="margin-bottom:8px">Rujukan terverifikasi yang siap dibayar, dikelompokkan per perujuk.</div>
+  const [g0,h0,m]=await Promise.all([api('payable'),api('pembayaran'),getMeta()]);
+  const g=g0.filter(x=>!BP||x.id_perujuk===BP), h=h0.filter(x=>!BP||x.id_perujuk===BP);
+  view(`<h2>Pembayaran Fee</h2><div class="card"><label style="margin-top:0">Filter perujuk</label><select id="bpf">${opts(m.perujuk.map(p=>({v:p.id,l:p.nama})),BP,'Semua perujuk')}</select></div><div class="muted" style="margin-bottom:8px">Rujukan terverifikasi yang siap dibayar, dikelompokkan per perujuk.</div>
   ${g.length?g.map((x,i)=>`<div class="card"><div class="row" style="justify-content:space-between"><div><b>${esc(x.nama)}</b><br><small class="muted">${esc(x.id_perujuk)} • ${x.rows.length} rujukan<br>${x.no_rek?esc(x.bank)+' '+esc(x.no_rek)+' a.n. '+esc(x.atas_nama):'<span style="color:var(--bad)">Rekening belum diisi</span>'}</small></div><div style="text-align:right;flex:0 0 auto"><b style="font-size:18px">${rp(x.total)}</b><br><button class="btn sm" data-g="${i}">Bayarkan</button></div></div></div>`).join(''):'<div class="card"><div class="empty">Tidak ada fee yang menunggu pembayaran</div></div>'}
   <h3>Riwayat pembayaran</h3><div class="card tbl"><table><tr><th>ID</th><th>Tgl</th><th>Perujuk</th><th class="n">Rujukan</th><th class="n">Total</th><th>Metode</th><th>Ref</th></tr>${h.map(p=>`<tr data-p="${esc(p.id)}" style="cursor:pointer"><td>${esc(p.id)}</td><td>${esc(p.tgl_bayar)}</td><td>${esc(p.nama_perujuk)}</td><td class="n">${p.jumlah_rujukan}</td><td class="n">${rp(p.total)}</td><td>${esc(p.metode)}</td><td>${esc(p.referensi)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">Belum ada</td></tr>'}</table></div>`);
+  $('#bpf').onchange=e=>{ BP=e.target.value; aBayar(); };
   document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>openBayar(g[b.dataset.g]));
   document.querySelectorAll('tr[data-p]').forEach(el=>el.onclick=()=>detailBayar(el.dataset.p,true));
 }
@@ -298,10 +326,11 @@ function openBayar(x){
   };
 }
 async function aRekap(){
-  view(`<h2>Rekap Fee Rujukan</h2><div class="card"><div class="row"><div><label>Dari tgl kunjungan</label><input id="rf" type="date" value="${monthStart()}"></div><div><label>Sampai</label><input id="rt" type="date" value="${todayStr()}"></div></div><div class="sp"></div><button class="btn" id="rg">Tampilkan</button></div><div id="out"></div>`);
+  const m=await getMeta();
+  view(`<h2>Rekap Fee Rujukan</h2><div class="card"><div class="row"><div><label>Perujuk</label><select id="rpj">${opts(m.perujuk.map(p=>({v:p.id,l:p.nama})),'','Semua perujuk')}</select></div><div><label>Dari tgl kunjungan</label><input id="rf" type="date" value="${monthStart()}"></div><div><label>Sampai</label><input id="rt" type="date" value="${todayStr()}"></div></div><div class="sp"></div><button class="btn" id="rg">Tampilkan</button></div><div id="out"></div>`);
   let D=null;
   const load=async()=>{ $('#out').innerHTML='<div class="empty">Memuat…</div>'; try{
-    D=await api('rekap',{from:$('#rf').value,to:$('#rt').value});
+    D=await api('rekap',{from:$('#rf').value,to:$('#rt').value,id_perujuk:$('#rpj').value});
     const tot=D.perujuk.reduce((a,p)=>({t:a.t+p.fee_terutang,d:a.d+p.fee_dibayar,n:a.n+p.total}),{t:0,d:0,n:0});
     $('#out').innerHTML=`<div class="grid"><div class="stat"><span>Total rujukan</span><b>${tot.n}</b></div><div class="stat"><span>Fee belum dibayar</span><b>${rp(tot.t)}</b></div><div class="stat"><span>Fee dibayar</span><b>${rp(tot.d)}</b></div></div>
     <div class="row" style="margin-bottom:8px"><button class="btn sec sm" id="cp">Unduh CSV per perujuk</button><button class="btn sec sm" id="cl">Unduh CSV per layanan</button></div>
