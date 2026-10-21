@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIRUJUK-RS | Fee Rujukan RSU Allam Medica</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--tx:#1b2430;--mut:#667085;--line:#e3e8ef;--pri:#0b6e4f;--pri2:#e6f4ef;--warn:#b54708;--warnbg:#fef0c7;--info:#175cd3;--infobg:#e0ecff;--ok:#067647;--okbg:#d1fadf;--bad:#b42318;--badbg:#fee4e2}
+@media (prefers-color-scheme:dark){:root{--bg:#10151c;--card:#1a212b;--tx:#e8edf3;--mut:#9aa6b5;--line:#2a3441;--pri:#34c38f;--pri2:#173a30;--warn:#fdb022;--warnbg:#3b2a0a;--info:#84adff;--infobg:#14284d;--ok:#6ce9a6;--okbg:#0f3322;--bad:#fda29b;--badbg:#431511}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:76px}
+header{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:10px 14px}
+header b{font-size:16px}header small{display:block;opacity:.85;font-size:12px}
+header button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:8px;padding:6px 12px;font-size:13px}
+main{max-width:980px;margin:0 auto;padding:14px}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);display:flex;z-index:5}
+nav button{flex:1;border:0;background:none;color:var(--mut);padding:12px 2px;font-size:12px;font-weight:600}
+nav button.on{color:var(--pri);box-shadow:inset 0 3px 0 var(--pri)}
+h2{margin:6px 0 12px;font-size:18px}h3{margin:18px 0 8px;font-size:15px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat span{display:block;color:var(--mut);font-size:12px}.stat b{font-size:20px}
+label{display:block;font-size:13px;font-weight:600;margin:10px 0 4px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+textarea{min-height:70px}
+.btn{background:var(--pri);color:#fff;border:0;border-radius:8px;padding:10px 16px;font-weight:600;font-size:14px}
+.btn.sec{background:var(--pri2);color:var(--pri)}.btn.bad{background:var(--bad);color:#fff}.btn.sm{padding:6px 10px;font-size:13px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{flex:1;min-width:120px}.row .btn{flex:0 0 auto}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700}
+.b-warn{background:var(--warnbg);color:var(--warn)}.b-info{background:var(--infobg);color:var(--info)}.b-ok{background:var(--okbg);color:var(--ok)}.b-bad{background:var(--badbg);color:var(--bad)}
+.item{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border:0}.item small{color:var(--mut)}.item .r{text-align:right;white-space:nowrap}
+.tbl{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{color:var(--mut);font-size:12px}td.n,th.n{text-align:right}
+.tabs{display:flex;gap:6px;margin-bottom:12px}.tabs button{flex:1;padding:8px;border:1px solid var(--line);background:var(--card);color:var(--tx);border-radius:8px;font-weight:600}.tabs button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.msg{padding:10px 12px;border-radius:8px;margin:8px 0;font-size:14px}.msg.err{background:var(--badbg);color:var(--bad)}.msg.ok{background:var(--okbg);color:var(--ok)}.msg.inf{background:var(--infobg);color:var(--info)}
+.empty{color:var(--mut);text-align:center;padding:24px 0}
+dialog{border:0;border-radius:14px;padding:16px;width:min(560px,94vw);background:var(--card);color:var(--tx)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#1b2430;color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;display:none;z-index:20;max-width:90vw}
+.login{max-width:380px;margin:8vh auto 0}
+.login .tabs{margin-top:10px}
+.pin{font-size:22px;font-weight:800;letter-spacing:4px}
+.muted{color:var(--mut)}.sp{height:8px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<dialog id="dlg"></dialog>
+<div id="toast"></div>
+
+<script>
+/* ============ KONFIGURASI ============
+   Ganti API_URL dengan URL Web App Apps Script (berakhiran /exec).
+   INGAT: placeholder ini harus diisi ulang setiap kali file diganti penuh. */
+const API_URL = 'API_URL';
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const rp = n => new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0);
+const STAT = {BARU:['Menunggu verifikasi','b-warn'],TERVERIFIKASI:['Terverifikasi','b-info'],DIBAYAR:['Dibayar','b-ok'],DITOLAK:['Ditolak','b-bad']};
+const badge = s => `<span class="badge ${(STAT[s]||['','']) [1]}">${esc((STAT[s]||[s])[0])}</span>`;
+const todayStr = () => { const d = new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const monthStart = () => todayStr().slice(0,8)+'01';
+
+const S = { token:null, user:null, tab:null, meta:null, role:'PERUJUK' };
+try { const t = JSON.parse(localStorage.getItem('sirujuk')||'null'); if (t) { S.token=t.token; S.user=t.user; } } catch(e){}
+
+async function api(action, data){
+  if (API_URL === 'API_URL') throw new Error('API_URL belum diisi di index.html');
+  const res = await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({action,token:S.token},data||{}))});
+  const j = await res.json();
+  if (!j.ok){ if (j.auth) logout(true); throw new Error(j.error||'Terjadi kesalahan'); }
+  return j.data;
+}
+function toast(t){ const e=$('#toast'); e.textContent=t; e.style.display='block'; clearTimeout(toast.t); toast.t=setTimeout(()=>e.style.display='none',3200); }
+function openDlg(html){ const d=$('#dlg'); d.innerHTML=html; if(!d.open) d.showModal(); return d; }
+function closeDlg(){ const d=$('#dlg'); if(d.open) d.close(); }
+function view(html){ $('#view').innerHTML = html; }
+function loading(){ view('<div class="empty">Memuat…</div>'); }
+function err(e){ return `<div class="msg err">${esc(e.message||e)}</div>`; }
+async function getMeta(){ if(!S.meta) S.meta = await api('meta'); return S.meta; }
+function opts(list, sel, blank){ return (blank?`<option value="">${esc(blank)}</option>`:'')+list.map(x=>{const v=typeof x==='object'?x.v:x, l=typeof x==='object'?x.l:x; return `<option value="${esc(v)}" ${v===sel?'selected':''}>${esc(l)}</option>`}).join(''); }
+function fd(form){ const o={}; new FormData(form).forEach((v,k)=>o[k]=v); return o; }
+function csv(rows, cols, name){
+  const q = v => '"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const txt = '\ufeff'+[cols.map(c=>q(c[1])).join(',')].concat(rows.map(r=>cols.map(c=>q(r[c[0]])).join(','))).join('\n');
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv;charset=utf-8'})); a.download=name; a.click();
+}
+
+/* ============ LOGIN / SHELL ============ */
+function logout(expired){
+  S.token=null; S.user=null; S.meta=null; S.tab=null;
+  try{ localStorage.removeItem('sirujuk'); }catch(e){}
+  renderLogin(expired?'Sesi berakhir, silakan login ulang.':'');
+}
+function renderLogin(note){
+  $('#app').innerHTML = `<div class="login"><div class="card">
+  <h2 style="text-align:center">SIRUJUK-RS</h2><div class="muted" style="text-align:center">Sistem Fee Rujukan • RSU Allam Medica</div>
+  <div class="tabs"><button type="button" id="rP" class="${S.role==='PERUJUK'?'on':''}">Perujuk</button><button type="button" id="rA" class="${S.role==='ADMIN'?'on':''}">Admin RS</button></div>
+  ${note?`<div class="msg inf">${esc(note)}</div>`:''}<div id="lerr"></div>
+  <form id="lf"><label>ID Pengguna</label><input name="id" autocomplete="username" required placeholder="${S.role==='ADMIN'?'contoh: admin':'contoh: P001'}">
+  <label>PIN (6 angka)</label><input name="pin" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" required>
+  <div class="sp"></div><button class="btn" style="width:100%">Masuk</button></form>
+  <p class="muted" style="font-size:12px;margin-bottom:0">Lupa PIN? Hubungi admin RS.</p></div></div>`;
+  $('#rP').onclick=()=>{S.role='PERUJUK';renderLogin();};
+  $('#rA').onclick=()=>{S.role='ADMIN';renderLogin();};
+  $('#lf').onsubmit=async e=>{
+    e.preventDefault(); const b=e.target.querySelector('button'); b.disabled=true; b.textContent='Memeriksa…';
+    try{
+      const d=await api('login',Object.assign(fd(e.target),{role:S.role}));
+      S.token=d.token; S.user=d.user;
+      try{ localStorage.setItem('sirujuk',JSON.stringify({token:d.token,user:d.user})); }catch(x){}
+      renderShell();
+    }catch(x){ $('#lerr').innerHTML=err(x); b.disabled=false; b.textContent='Masuk'; }
+  };
+}
+const TABS = {
+  PERUJUK:[['home','Beranda',vHome],['input','Input',vInput],['riwayat','Riwayat',vRiwayat],['bayar','Pembayaran',vBayarP],['profil','Profil',vProfil]],
+  ADMIN:[['dash','Dashboard',aDash],['verif','Verifikasi',aVerif],['rujukan','Rujukan',aRujukan],['bayar','Bayar',aBayar],['rekap','Rekap',aRekap],['master','Master',aMaster]]
+};
+function renderShell(){
+  const tabs=TABS[S.user.role];
+  $('#app').innerHTML = `<header><div><b>SIRUJUK-RS</b><small>${esc(S.user.nama)} • ${S.user.role==='ADMIN'?'Admin RS':'Perujuk'}</small></div><button id="lo">Keluar</button></header><main id="view"></main><nav id="nav"></nav>`;
+  $('#lo').onclick=()=>logout();
+  go(S.tab && tabs.some(t=>t[0]===S.tab) ? S.tab : tabs[0][0]);
+}
+function go(tab){
+  S.tab=tab; const tabs=TABS[S.user.role];
+  $('#nav').innerHTML = tabs.filter(t=>t[1]).map(t=>`<button class="${t[0]===tab?'on':''}" data-t="${t[0]}">${t[1]}</button>`).join('');
+  $('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>go(b.dataset.t));
+  const fn = tabs.filter(t=>t[0]===tab)[0][2];
+  loading(); Promise.resolve(fn()).catch(e=>view(err(e)));
+  window.scrollTo(0,0);
+}
+
+/* ============ RUJUKAN: komponen bersama ============ */
+function rujukanItem(r, admin){
+  return `<div class="item"><div><b>${esc(r.nama_pasien)}</b> ${badge(r.status)}<br><small>${esc(r.tgl_kunjungan)} • ${esc(r.layanan)} • ${esc(r.jenis_pasien)}${admin?' • '+esc(r.nama_perujuk):''}</small>${r.alasan_tolak?`<br><small style="color:var(--bad)">Alasan: ${esc(r.alasan_tolak)}</small>`:''}</div><div class="r">${admin&&(r.status==='TERVERIFIKASI'||r.status==='DIBAYAR')?`<b>${rp(r.fee)}</b><br>`:''}<small>${esc(r.id)}</small></div></div>`;
+}
+
+/* ============ PERUJUK ============ */
+async function vHome(){
+  const d = await api('home'); const s=d.ringkas;
+  view(`<h2>Halo, ${esc(S.user.nama)}</h2>
+  <div class="grid">
+  <div class="stat"><span>Menunggu verifikasi</span><b>${s.BARU}</b></div>
+  <div class="stat"><span>Terverifikasi</span><b>${s.TERVERIFIKASI}</b></div>
+  <div class="stat"><span>Selesai (dibayar)</span><b>${s.DIBAYAR}</b></div>
+  <div class="stat"><span>Ditolak</span><b>${s.DITOLAK}</b></div></div>
+  <button class="btn" id="ni">+ Input rujukan baru</button>
+  <h3>Rujukan terbaru</h3><div class="card">${d.terbaru.length?d.terbaru.map(r=>rujukanItem(r)).join(''):'<div class="empty">Belum ada rujukan</div>'}</div>`);
+  $('#ni').onclick=()=>go('input');
+}
+async function vInput(){
+  const m = await getMeta(); const admin = S.user.role==='ADMIN';
+  view(`<h2>Input Rujukan</h2><div class="card"><div id="fe"></div><form id="rf">
+  ${admin?`<label>Perujuk</label><select name="id_perujuk" required>${opts(m.perujuk.map(p=>({v:p.id,l:p.nama+' ('+p.kategori+')'})),'','Pilih perujuk…')}</select>`:''}
+  <label>Nama pasien</label><input name="nama_pasien" required maxlength="100">
+  <label>No. RM (jika ada)</label><input name="no_rm" maxlength="30" inputmode="numeric">
+  <div class="row"><div><label>Jenis pasien</label><select name="jenis_pasien" required>${opts(m.jenis,'','Pilih…')}</select></div>
+  <div><label>Layanan</label><select name="layanan" required>${opts(m.layanan,'','Pilih…')}</select></div></div>
+  <label>Tanggal kunjungan</label><input name="tgl_kunjungan" type="date" required max="${todayStr()}" value="${todayStr()}">
+  <label>Catatan (opsional)</label><textarea name="catatan" maxlength="300"></textarea>
+  <div class="sp"></div><button class="btn">Kirim rujukan</button></form></div>`);
+  $('#rf').onsubmit=async e=>{
+    e.preventDefault(); const b=e.target.querySelector('button'); b.disabled=true;
+    try{ const d=await api('submit',fd(e.target)); toast('Tersimpan: '+d.id); go(admin?'rujukan':'riwayat'); }
+    catch(x){ $('#fe').innerHTML=err(x); b.disabled=false; window.scrollTo(0,0); }
+  };
+}
+async function vRiwayat(){
+  view(`<h2>Riwayat Rujukan</h2><div class="card"><select id="fs">${opts([{v:'BARU',l:'Menunggu'},{v:'TERVERIFIKASI',l:'Terverifikasi'},{v:'DIBAYAR',l:'Dibayar'},{v:'DITOLAK',l:'Ditolak'}],'','Semua status')}</select></div><div class="card" id="lst"></div>`);
+  const load=async()=>{ $('#lst').innerHTML='<div class="empty">Memuat…</div>'; try{ const d=await api('rujukan',{status:$('#fs').value}); $('#lst').innerHTML=d.rows.length?d.rows.map(r=>rujukanItem(r)).join('')+(d.total>d.rows.length?`<div class="muted">Menampilkan ${d.rows.length} dari ${d.total}</div>`:''):'<div class="empty">Tidak ada data</div>'; }catch(x){ $('#lst').innerHTML=err(x); } };
+  $('#fs').onchange=load; load();
+}
+async function vBayarP(){
+  const rows = await api('pembayaran');
+  view(`<h2>Riwayat Pembayaran Fee</h2><div class="card">${rows.length?rows.map(p=>`<div class="item" data-p="${esc(p.id)}" style="cursor:pointer"><div><b>${esc(p.tgl_bayar)}</b><br><small>${esc(p.id)} • ${p.jumlah_rujukan} rujukan • ${esc(p.metode)}</small></div><div class="r"><b>${rp(p.total)}</b></div></div>`).join(''):'<div class="empty">Belum ada pembayaran</div>'}</div>`);
+  document.querySelectorAll('[data-p]').forEach(el=>el.onclick=()=>detailBayar(el.dataset.p, S.user.role==='ADMIN'));
+}
+async function detailBayar(id, admin){
+  openDlg('<div class="empty">Memuat…</div>');
+  try{ const d=await api('rujukan',{id_pembayaran:id}); openDlg(`<h3 style="margin-top:0">Rincian ${esc(id)}</h3>${d.rows.map(r=>rujukanItem(r,admin)).join('')}<div class="sp"></div><button class="btn sec" onclick="closeDlg()">Tutup</button>`); }
+  catch(x){ openDlg(err(x)+'<button class="btn sec" onclick="closeDlg()">Tutup</button>'); }
+}
+async function vProfil(){
+  const p = await api('me');
+  view(`<h2>Profil & Rekening</h2><div class="card"><b>${esc(p.nama)}</b><br><small class="muted">${esc(p.id)} • ${esc(p.kategori)}</small>
+  <div id="pe"></div><form id="pf"><label>No. HP</label><input name="no_hp" value="${esc(p.no_hp)}" inputmode="tel">
+  <label>Alamat</label><input name="alamat" value="${esc(p.alamat)}">
+  <div class="row"><div><label>Bank</label><input name="bank" value="${esc(p.bank)}"></div><div><label>No. rekening</label><input name="no_rek" value="${esc(p.no_rek)}" inputmode="numeric"></div></div>
+  <label>Atas nama</label><input name="atas_nama" value="${esc(p.atas_nama)}"><div class="sp"></div><button class="btn">Simpan</button></form></div>
+  <div class="card"><h3 style="margin-top:0">Ganti PIN</h3><div id="ce"></div><form id="cf"><label>PIN lama</label><input name="old_pin" type="password" inputmode="numeric" maxlength="6" required>
+  <label>PIN baru (6 angka)</label><input name="new_pin" type="password" inputmode="numeric" maxlength="6" required><div class="sp"></div><button class="btn sec">Ganti PIN</button></form></div>`);
+  $('#pf').onsubmit=async e=>{ e.preventDefault(); try{ await api('profileSave',fd(e.target)); toast('Profil tersimpan'); }catch(x){ $('#pe').innerHTML=err(x); } };
+  $('#cf').onsubmit=async e=>{ e.preventDefault(); try{ await api('changePin',fd(e.target)); toast('PIN diganti'); e.target.reset(); $('#ce').innerHTML=''; }catch(x){ $('#ce').innerHTML=err(x); } };
+}
+
+/* ============ ADMIN ============ */
+async function aDash(){
+  const d = await api('dash'); const s=d.ringkas;
+  view(`<h2>Dashboard</h2><div class="grid">
+  <div class="stat"><span>Menunggu verifikasi</span><b>${s.BARU}</b></div>
+  <div class="stat"><span>Fee belum dibayar</span><b>${rp(s.fee_terutang)}</b></div>
+  <div class="stat"><span>Total fee dibayar</span><b>${rp(s.fee_dibayar)}</b></div>
+  <div class="stat"><span>Terverifikasi (antre bayar)</span><b>${s.TERVERIFIKASI}</b></div></div>
+  <h3>6 bulan terakhir (menurut tanggal kunjungan)</h3><div class="card tbl"><table><tr><th>Bulan</th><th class="n">Rujukan</th><th class="n">Fee</th></tr>${d.bulanan.map(b=>`<tr><td>${esc(b.bulan)}</td><td class="n">${b.rujukan}</td><td class="n">${rp(b.fee)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Belum ada data</td></tr>'}</table></div>
+  <h3>Perujuk teratas bulan ${esc(d.bulan_ini)}</h3><div class="card tbl"><table><tr><th>Perujuk</th><th class="n">Rujukan</th><th class="n">Fee</th></tr>${d.top_perujuk.map(b=>`<tr><td>${esc(b.nama)}</td><td class="n">${b.rujukan}</td><td class="n">${rp(b.fee)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Belum ada data</td></tr>'}</table></div>`);
+}
+let VERIF=[];
+async function aVerif(){
+  const d = await api('rujukan',{status:'BARU'}); VERIF=d.rows.slice().reverse();
+  view(`<h2>Verifikasi Rujukan</h2><div class="muted" style="margin-bottom:8px">Cocokkan dengan data SIMRS (nama, tanggal, layanan, jenis pasien) sebelum memverifikasi.</div>
+  <div class="card">${VERIF.length?VERIF.map(r=>`<div class="item"><div><b>${esc(r.nama_pasien)}</b> <small>${esc(r.no_rm?'RM '+r.no_rm:'')}</small><br><small>${esc(r.tgl_kunjungan)} • ${esc(r.layanan)} • ${esc(r.jenis_pasien)}<br>Perujuk: ${esc(r.nama_perujuk)} (${esc(r.kategori_perujuk)})${r.catatan?'<br>Catatan: '+esc(r.catatan):''}</small></div><div class="r"><button class="btn sm" data-id="${esc(r.id)}">Proses</button></div></div>`).join(''):'<div class="empty">Tidak ada rujukan menunggu 🎉</div>'}</div>`);
+  document.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>openProses(b.dataset.id));
+}
+async function openProses(id){
+  const r = VERIF.filter(x=>x.id===id)[0]; const m = await getMeta();
+  openDlg(`<h3 style="margin-top:0">Proses ${esc(id)}</h3><div id="de"></div>
+  <div><b>${esc(r.nama_pasien)}</b><br><small class="muted">${esc(r.tgl_kunjungan)} • ${esc(r.nama_perujuk)} (${esc(r.kategori_perujuk)})</small></div>
+  <div class="row"><div><label>Layanan</label><select id="pl">${opts(m.layanan,r.layanan)}</select></div><div><label>Jenis pasien</label><select id="pj">${opts(m.jenis,r.jenis_pasien)}</select></div></div>
+  <div id="pn" style="display:none"><label>Nilai tagihan/klaim (Rp)</label><input id="pv" type="number" min="0" inputmode="numeric"></div>
+  <div class="msg inf" id="pp">Menghitung fee…</div>
+  <div class="row" style="margin-top:6px"><button class="btn" id="bv" disabled>Verifikasi</button><button class="btn bad" id="bt">Tolak</button><button class="btn sec" onclick="closeDlg()">Batal</button></div>`);
+  let fee=null;
+  const prev=async()=>{
+    try{
+      const d=await api('previewFee',{id,layanan:$('#pl').value,jenis_pasien:$('#pj').value,nilai_dasar:$('#pv').value});
+      $('#pn').style.display=d.perlu_nilai_dasar?'block':'none'; fee=d.fee;
+      if(!d.tarif){ $('#pp').className='msg err'; $('#pp').textContent='Belum ada aturan fee untuk kombinasi ini. Tambahkan di Master > Tarif.'; }
+      else if(d.fee===null){ $('#pp').className='msg inf'; $('#pp').textContent='Aturan: '+d.tarif.nilai+'% — isi nilai tagihan/klaim.'; }
+      else { $('#pp').className='msg ok'; $('#pp').innerHTML='Fee: <b>'+rp(d.fee)+'</b> ('+(d.tarif.tipe==='PERSEN'?d.tarif.nilai+'%':'nominal tetap')+')'; }
+      $('#bv').disabled = fee===null;
+    }catch(x){ $('#pp').className='msg err'; $('#pp').textContent=x.message; $('#bv').disabled=true; }
+  };
+  ['pl','pj'].forEach(i=>$('#'+i).onchange=prev); $('#pv').oninput=prev; prev();
+  $('#bv').onclick=async()=>{ $('#bv').disabled=true; try{ await api('verify',{id,layanan:$('#pl').value,jenis_pasien:$('#pj').value,nilai_dasar:$('#pv').value}); closeDlg(); toast('Terverifikasi'); aVerif(); }catch(x){ $('#de').innerHTML=err(x); $('#bv').disabled=false; } };
+  $('#bt').onclick=async()=>{ const a=prompt('Alasan penolakan:'); if(!a) return; try{ await api('reject',{id,alasan:a}); closeDlg(); toast('Ditolak'); aVerif(); }catch(x){ $('#de').innerHTML=err(x); } };
+}
+let RJ=[];
+async function aRujukan(){
+  const m=await getMeta();
+  view(`<h2>Semua Rujukan</h2><div class="card"><div class="row">
+  <div><label>Status</label><select id="fs">${opts([{v:'BARU',l:'Menunggu'},{v:'TERVERIFIKASI',l:'Terverifikasi'},{v:'DIBAYAR',l:'Dibayar'},{v:'DITOLAK',l:'Ditolak'}],'','Semua')}</select></div>
+  <div><label>Perujuk</label><select id="fp">${opts(m.perujuk.map(p=>({v:p.id,l:p.nama})),'','Semua')}</select></div></div>
+  <div class="row"><div><label>Dari tgl kunjungan</label><input id="ff" type="date" value="${monthStart()}"></div><div><label>Sampai</label><input id="ft" type="date" value="${todayStr()}"></div></div>
+  <label>Cari (nama/RM/ID)</label><input id="fq"><div class="sp"></div>
+  <div class="row"><button class="btn" id="fgo">Tampilkan</button><button class="btn sec" id="fin">+ Input rujukan</button><button class="btn sec" id="fcsv">Unduh CSV</button></div></div>
+  <div class="card tbl" id="lst"></div>`);
+  const load=async()=>{ $('#lst').innerHTML='<div class="empty">Memuat…</div>'; try{
+    const d=await api('rujukan',{status:$('#fs').value,id_perujuk:$('#fp').value,from:$('#ff').value,to:$('#ft').value,q:$('#fq').value}); RJ=d.rows;
+    $('#lst').innerHTML=d.rows.length?`<div class="muted" style="margin-bottom:6px">${d.total} data${d.total>d.rows.length?' (tampil '+d.rows.length+', persempit filter)':''}</div><table><tr><th>ID</th><th>Tgl</th><th>Pasien</th><th>Layanan</th><th>Jenis</th><th>Perujuk</th><th>Status</th><th class="n">Fee</th></tr>${d.rows.map(r=>`<tr><td>${esc(r.id)}</td><td>${esc(r.tgl_kunjungan)}</td><td>${esc(r.nama_pasien)}</td><td>${esc(r.layanan)}</td><td>${esc(r.jenis_pasien)}</td><td>${esc(r.nama_perujuk)}</td><td>${badge(r.status)}</td><td class="n">${r.fee?rp(r.fee):'–'}</td></tr>`).join('')}</table>`:'<div class="empty">Tidak ada data</div>';
+  }catch(x){ $('#lst').innerHTML=err(x); } };
+  $('#fgo').onclick=load; $('#fin').onclick=()=>openInputAdmin();
+  $('#fcsv').onclick=()=>{ if(!RJ.length) return toast('Tidak ada data'); csv(RJ,[['id','ID'],['tgl_kunjungan','Tgl Kunjungan'],['nama_pasien','Pasien'],['no_rm','No RM'],['jenis_pasien','Jenis Pasien'],['layanan','Layanan'],['id_perujuk','ID Perujuk'],['nama_perujuk','Perujuk'],['kategori_perujuk','Kategori'],['status','Status'],['nilai_dasar','Nilai Dasar'],['fee','Fee'],['id_pembayaran','ID Bayar']],'rujukan_'+todayStr()+'.csv'); };
+  load();
+}
+function openInputAdmin(){ closeDlg(); go('rujukan_input'); }
+TABS.ADMIN.push(['rujukan_input','',vInput]);
+async function aBayar(){
+  const [g,h]=await Promise.all([api('payable'),api('pembayaran')]);
+  view(`<h2>Pembayaran Fee</h2><div class="muted" style="margin-bottom:8px">Rujukan terverifikasi yang siap dibayar, dikelompokkan per perujuk.</div>
+  ${g.length?g.map((x,i)=>`<div class="card"><div class="row" style="justify-content:space-between"><div><b>${esc(x.nama)}</b><br><small class="muted">${esc(x.id_perujuk)} • ${x.rows.length} rujukan<br>${x.no_rek?esc(x.bank)+' '+esc(x.no_rek)+' a.n. '+esc(x.atas_nama):'<span style="color:var(--bad)">Rekening belum diisi</span>'}</small></div><div style="text-align:right;flex:0 0 auto"><b style="font-size:18px">${rp(x.total)}</b><br><button class="btn sm" data-g="${i}">Bayarkan</button></div></div></div>`).join(''):'<div class="card"><div class="empty">Tidak ada fee yang menunggu pembayaran</div></div>'}
+  <h3>Riwayat pembayaran</h3><div class="card tbl"><table><tr><th>ID</th><th>Tgl</th><th>Perujuk</th><th class="n">Rujukan</th><th class="n">Total</th><th>Metode</th><th>Ref</th></tr>${h.map(p=>`<tr data-p="${esc(p.id)}" style="cursor:pointer"><td>${esc(p.id)}</td><td>${esc(p.tgl_bayar)}</td><td>${esc(p.nama_perujuk)}</td><td class="n">${p.jumlah_rujukan}</td><td class="n">${rp(p.total)}</td><td>${esc(p.metode)}</td><td>${esc(p.referensi)}</td></tr>`).join('')||'<tr><td colspan="7" class="empty">Belum ada</td></tr>'}</table></div>`);
+  document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>openBayar(g[b.dataset.g]));
+  document.querySelectorAll('tr[data-p]').forEach(el=>el.onclick=()=>detailBayar(el.dataset.p,true));
+}
+function openBayar(x){
+  openDlg(`<h3 style="margin-top:0">Bayar fee — ${esc(x.nama)}</h3><div id="de"></div>
+  <div style="max-height:34vh;overflow:auto">${x.rows.map(r=>`<label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:6px 0"><input type="checkbox" class="ck" value="${esc(r.id)}" data-f="${r.fee}" checked style="width:auto"><span style="flex:1">${esc(r.tgl_kunjungan)} • ${esc(r.nama_pasien)} • ${esc(r.layanan)}</span><b>${rp(r.fee)}</b></label>`).join('')}</div>
+  <div class="msg inf">Total dibayar: <b id="tt"></b></div>
+  <div class="row"><div><label>Metode</label><select id="mt">${opts(['Transfer','Tunai','Potong tagihan lain'],'Transfer')}</select></div><div><label>No. referensi / bukti</label><input id="rf" maxlength="100"></div></div>
+  <div class="row" style="margin-top:10px"><button class="btn" id="by">Konfirmasi pembayaran</button><button class="btn sec" onclick="closeDlg()">Batal</button></div>`);
+  const sum=()=>{ let t=0; document.querySelectorAll('.ck:checked').forEach(c=>t+=Number(c.dataset.f)); $('#tt').textContent=rp(t); $('#by').disabled=!document.querySelectorAll('.ck:checked').length; };
+  document.querySelectorAll('.ck').forEach(c=>c.onchange=sum); sum();
+  $('#by').onclick=async()=>{
+    const ids=[...document.querySelectorAll('.ck:checked')].map(c=>c.value);
+    if(!confirm('Konfirmasi pembayaran '+$('#tt').textContent+' untuk '+x.nama+'?')) return;
+    $('#by').disabled=true;
+    try{ const d=await api('pay',{ids,metode:$('#mt').value,referensi:$('#rf').value}); closeDlg(); toast('Pembayaran '+d.id+' tercatat'); aBayar(); }
+    catch(e){ $('#de').innerHTML=err(e); $('#by').disabled=false; }
+  };
+}
+async function aRekap(){
+  view(`<h2>Rekap Fee Rujukan</h2><div class="card"><div class="row"><div><label>Dari tgl kunjungan</label><input id="rf" type="date" value="${monthStart()}"></div><div><label>Sampai</label><input id="rt" type="date" value="${todayStr()}"></div></div><div class="sp"></div><button class="btn" id="rg">Tampilkan</button></div><div id="out"></div>`);
+  let D=null;
+  const load=async()=>{ $('#out').innerHTML='<div class="empty">Memuat…</div>'; try{
+    D=await api('rekap',{from:$('#rf').value,to:$('#rt').value});
+    const tot=D.perujuk.reduce((a,p)=>({t:a.t+p.fee_terutang,d:a.d+p.fee_dibayar,n:a.n+p.total}),{t:0,d:0,n:0});
+    $('#out').innerHTML=`<div class="grid"><div class="stat"><span>Total rujukan</span><b>${tot.n}</b></div><div class="stat"><span>Fee belum dibayar</span><b>${rp(tot.t)}</b></div><div class="stat"><span>Fee dibayar</span><b>${rp(tot.d)}</b></div></div>
+    <div class="row" style="margin-bottom:8px"><button class="btn sec sm" id="cp">Unduh CSV per perujuk</button><button class="btn sec sm" id="cl">Unduh CSV per layanan</button></div>
+    <h3>Per perujuk</h3><div class="card tbl"><table><tr><th>Perujuk</th><th>Kategori</th><th class="n">Total</th><th class="n">Menunggu</th><th class="n">Ditolak</th><th class="n">Terverif.</th><th class="n">Dibayar</th><th class="n">Fee belum bayar</th><th class="n">Fee dibayar</th></tr>${D.perujuk.map(p=>`<tr><td>${esc(p.nama)}</td><td>${esc(p.kategori)}</td><td class="n">${p.total}</td><td class="n">${p.baru}</td><td class="n">${p.ditolak}</td><td class="n">${p.terverifikasi}</td><td class="n">${p.dibayar}</td><td class="n">${rp(p.fee_terutang)}</td><td class="n">${rp(p.fee_dibayar)}</td></tr>`).join('')||'<tr><td colspan="9" class="empty">Tidak ada data</td></tr>'}</table></div>
+    <h3>Per layanan (terverifikasi + dibayar)</h3><div class="card tbl"><table><tr><th>Layanan</th><th class="n">Rujukan</th><th class="n">Fee</th></tr>${D.layanan.map(l=>`<tr><td>${esc(l.layanan)}</td><td class="n">${l.rujukan}</td><td class="n">${rp(l.fee)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Tidak ada data</td></tr>'}</table></div>`;
+    $('#cp').onclick=()=>csv(D.perujuk,[['id','ID'],['nama','Perujuk'],['kategori','Kategori'],['total','Total Rujukan'],['baru','Menunggu'],['ditolak','Ditolak'],['terverifikasi','Terverifikasi'],['dibayar','Dibayar'],['fee_terutang','Fee Belum Dibayar'],['fee_dibayar','Fee Dibayar']],'rekap_perujuk_'+$('#rf').value+'_sd_'+$('#rt').value+'.csv');
+    $('#cl').onclick=()=>csv(D.layanan,[['layanan','Layanan'],['rujukan','Rujukan'],['fee','Fee']],'rekap_layanan_'+$('#rf').value+'_sd_'+$('#rt').value+'.csv');
+  }catch(x){ $('#out').innerHTML=err(x); } };
+  $('#rg').onclick=load; load();
+}
+let MT='perujuk';
+async function aMaster(){
+  view(`<h2>Master Data</h2><div class="tabs"><button data-m="perujuk" class="${MT==='perujuk'?'on':''}">Perujuk</button><button data-m="tarif" class="${MT==='tarif'?'on':''}">Tarif Fee</button><button data-m="admin" class="${MT==='admin'?'on':''}">Admin</button></div><div id="mc"></div>`);
+  document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{MT=b.dataset.m;aMaster();});
+  const mc=$('#mc'); mc.innerHTML='<div class="empty">Memuat…</div>';
+  if(MT==='perujuk') return mPerujuk(); if(MT==='tarif') return mTarif(); return mAdmin();
+}
+async function mPerujuk(){
+  const rows=await api('perujukList');
+  $('#mc').innerHTML=`<button class="btn" id="add" style="margin-bottom:10px">+ Tambah perujuk</button><div class="card">${rows.map(r=>`<div class="item"><div><b>${esc(r.nama)}</b> ${r.aktif?'':'<span class="badge b-bad">Nonaktif</span>'}<br><small>${esc(r.id)} • ${esc(r.kategori)}<br>${r.no_rek?esc(r.bank)+' '+esc(r.no_rek):'Rekening belum diisi'}</small></div><div class="r"><button class="btn sec sm" data-e="${esc(r.id)}">Ubah</button></div></div>`).join('')||'<div class="empty">Belum ada perujuk</div>'}</div>`;
+  $('#add').onclick=()=>formPerujuk(null);
+  document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>formPerujuk(rows.filter(r=>r.id===b.dataset.e)[0]));
+}
+async function formPerujuk(r){
+  const m=await getMeta(); const e=!!r; r=r||{};
+  openDlg(`<h3 style="margin-top:0">${e?'Ubah':'Tambah'} perujuk</h3><div id="de"></div><form id="pf">
+  <label>Nama</label><input name="nama" required value="${esc(r.nama)}"><label>Kategori</label><select name="kategori" required>${opts(m.kategori,r.kategori,'Pilih…')}</select>
+  <div class="row"><div><label>No. HP</label><input name="no_hp" value="${esc(r.no_hp)}"></div><div><label>Alamat</label><input name="alamat" value="${esc(r.alamat)}"></div></div>
+  <div class="row"><div><label>Bank</label><input name="bank" value="${esc(r.bank)}"></div><div><label>No. rekening</label><input name="no_rek" value="${esc(r.no_rek)}"></div></div>
+  <label>Atas nama</label><input name="atas_nama" value="${esc(r.atas_nama)}">
+  ${e?`<label>Status</label><select name="aktif">${opts([{v:'true',l:'Aktif'},{v:'false',l:'Nonaktif'}],r.aktif?'true':'false')}</select>`:''}
+  <div class="row" style="margin-top:12px"><button class="btn">Simpan</button>${e?'<button type="button" class="btn sec" id="rp">Reset PIN</button>':''}<button type="button" class="btn sec" onclick="closeDlg()">Batal</button></div></form>`);
+  $('#pf').onsubmit=async ev=>{ ev.preventDefault(); const o=fd(ev.target); o.aktif=o.aktif!=='false'; if(e) o.id=r.id;
+    try{ const d=await api('perujukSave',o); S.meta=null; if(d.pin) showPin(d.id,d.pin,'Perujuk dibuat'); else { closeDlg(); toast('Tersimpan'); } mPerujuk(); }catch(x){ $('#de').innerHTML=err(x); } };
+  if(e) $('#rp').onclick=async()=>{ if(!confirm('Reset PIN '+r.nama+'?')) return; try{ const d=await api('resetPin',{role:'PERUJUK',id:r.id}); showPin(d.id,d.pin,'PIN direset'); }catch(x){ $('#de').innerHTML=err(x); } };
+}
+function showPin(id,pin,title){
+  openDlg(`<h3 style="margin-top:0">${esc(title)}</h3><p>Berikan kepada pengguna. PIN ini <b>hanya tampil sekarang</b>.</p><div class="card" style="text-align:center">ID: <b>${esc(id)}</b><br>PIN: <span class="pin">${esc(pin)}</span></div><button class="btn" onclick="closeDlg()">Selesai</button>`);
+}
+async function mTarif(){
+  const [rows,m]=await Promise.all([api('tarifList'),getMeta()]);
+  $('#mc').innerHTML=`<div class="msg inf">Jika beberapa aturan cocok, yang paling spesifik dipakai (layanan &gt; kategori perujuk &gt; jenis pasien). Fee dikunci saat rujukan diverifikasi, jadi perubahan tarif tidak mengubah fee yang sudah terverifikasi.</div><button class="btn" id="add" style="margin-bottom:10px">+ Tambah aturan fee</button><div class="card tbl"><table><tr><th>Layanan</th><th>Jenis pasien</th><th>Kategori perujuk</th><th>Fee</th><th>Status</th><th></th></tr>${rows.map(t=>`<tr><td>${esc(t.layanan)}</td><td>${esc(t.jenis_pasien)}</td><td>${esc(t.kategori)}</td><td>${t.tipe==='PERSEN'?t.nilai+'%':rp(t.nilai)}</td><td>${t.aktif?'Aktif':'Nonaktif'}</td><td><button class="btn sec sm" data-e="${esc(t.id)}">Ubah</button></td></tr>`).join('')}</table></div>`;
+  $('#add').onclick=()=>formTarif(null,m);
+  document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>formTarif(rows.filter(r=>r.id===b.dataset.e)[0],m));
+}
+function formTarif(t,m){
+  const e=!!t; t=t||{layanan:'',jenis_pasien:'SEMUA',kategori:'SEMUA',tipe:'NOMINAL',nilai:'',aktif:true};
+  openDlg(`<h3 style="margin-top:0">${e?'Ubah':'Tambah'} aturan fee</h3><div id="de"></div><form id="tf">
+  <label>Layanan</label><input name="layanan" required list="ll" value="${esc(t.layanan)}"><datalist id="ll">${m.layanan.map(l=>`<option value="${esc(l)}">`).join('')}</datalist>
+  <div class="row"><div><label>Jenis pasien</label><select name="jenis_pasien">${opts(['SEMUA'].concat(m.jenis),t.jenis_pasien)}</select></div><div><label>Kategori perujuk</label><select name="kategori">${opts(['SEMUA'].concat(m.kategori),t.kategori)}</select></div></div>
+  <div class="row"><div><label>Tipe fee</label><select name="tipe">${opts([{v:'NOMINAL',l:'Nominal tetap (Rp)'},{v:'PERSEN',l:'Persentase (%) dari tagihan/klaim'}],t.tipe)}</select></div><div><label>Nilai</label><input name="nilai" type="number" step="any" min="0" required value="${esc(t.nilai)}"></div></div>
+  <label>Status</label><select name="aktif">${opts([{v:'true',l:'Aktif'},{v:'false',l:'Nonaktif'}],t.aktif?'true':'false')}</select>
+  <div class="row" style="margin-top:12px"><button class="btn">Simpan</button><button type="button" class="btn sec" onclick="closeDlg()">Batal</button></div></form>`);
+  $('#tf').onsubmit=async ev=>{ ev.preventDefault(); const o=fd(ev.target); o.aktif=o.aktif!=='false'; if(e) o.id=t.id; try{ await api('tarifSave',o); S.meta=null; closeDlg(); toast('Tersimpan'); mTarif(); }catch(x){ $('#de').innerHTML=err(x); } };
+}
+async function mAdmin(){
+  const rows=await api('adminList');
+  $('#mc').innerHTML=`<button class="btn" id="add" style="margin-bottom:10px">+ Tambah admin</button><div class="card">${rows.map(r=>`<div class="item"><div><b>${esc(r.nama)}</b> ${r.aktif?'':'<span class="badge b-bad">Nonaktif</span>'}<br><small>${esc(r.id)}</small></div><div class="r">${r.id!==S.user.id?`<button class="btn sec sm" data-r="${esc(r.id)}">Reset PIN</button> <button class="btn sec sm" data-t="${esc(r.id)}" data-a="${r.aktif}">${r.aktif?'Nonaktifkan':'Aktifkan'}</button>`:'<small class="muted">Akun Anda</small>'}</div></div>`).join('')}</div>
+  <div class="card"><h3 style="margin-top:0">Ganti PIN saya</h3><div id="ce"></div><form id="cf"><label>PIN lama</label><input name="old_pin" type="password" inputmode="numeric" maxlength="6" required><label>PIN baru (6 angka)</label><input name="new_pin" type="password" inputmode="numeric" maxlength="6" required><div class="sp"></div><button class="btn sec">Ganti PIN</button></form></div>`;
+  $('#add').onclick=()=>{ openDlg(`<h3 style="margin-top:0">Tambah admin</h3><div id="de"></div><form id="af"><label>ID (huruf kecil/angka, 3-20)</label><input name="id" required><label>Nama</label><input name="nama" required><div class="row" style="margin-top:12px"><button class="btn">Buat</button><button type="button" class="btn sec" onclick="closeDlg()">Batal</button></div></form>`);
+    $('#af').onsubmit=async ev=>{ ev.preventDefault(); try{ const d=await api('adminCreate',fd(ev.target)); showPin(d.id,d.pin,'Admin dibuat'); mAdmin(); }catch(x){ $('#de').innerHTML=err(x); } }; };
+  document.querySelectorAll('[data-r]').forEach(b=>b.onclick=async()=>{ if(!confirm('Reset PIN '+b.dataset.r+'?')) return; try{ const d=await api('resetPin',{role:'ADMIN',id:b.dataset.r}); showPin(d.id,d.pin,'PIN direset'); }catch(x){ toast(x.message); } });
+  document.querySelectorAll('[data-t]').forEach(b=>b.onclick=async()=>{ try{ await api('adminToggle',{id:b.dataset.t,aktif:b.dataset.a!=='true'}); mAdmin(); }catch(x){ toast(x.message); } });
+  $('#cf').onsubmit=async e=>{ e.preventDefault(); try{ await api('changePin',fd(e.target)); toast('PIN diganti'); e.target.reset(); $('#ce').innerHTML=''; }catch(x){ $('#ce').innerHTML=err(x); } };
+}
+
+/* ============ START ============ */
+if (S.token && S.user) renderShell(); else renderLogin();
+</script>
+</body>
+</html>
