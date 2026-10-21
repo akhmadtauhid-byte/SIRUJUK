@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SIRUJUK-RS | Fee Rujukan RSU Allam Medica</title>
+<title>SIRUJUK</title>
 <style>
-:root{--bg:#f4f6f9;--card:#fff;--tx:#1b2430;--mut:#667085;--line:#e3e8ef;--pri:#0b6e4f;--pri2:#e6f4ef;--warn:#b54708;--warnbg:#fef0c7;--info:#175cd3;--infobg:#e0ecff;--ok:#067647;--okbg:#d1fadf;--bad:#b42318;--badbg:#fee4e2}
-@media (prefers-color-scheme:dark){:root{--bg:#10151c;--card:#1a212b;--tx:#e8edf3;--mut:#9aa6b5;--line:#2a3441;--pri:#34c38f;--pri2:#173a30;--warn:#fdb022;--warnbg:#3b2a0a;--info:#84adff;--infobg:#14284d;--ok:#6ce9a6;--okbg:#0f3322;--bad:#fda29b;--badbg:#431511}}
+:root{--bg:#fff6fa;--card:#fff;--tx:#2a1b24;--mut:#7a6671;--line:#f3dfe8;--pri:#c2255c;--pri2:#ffe8f1;--warn:#b54708;--warnbg:#fef0c7;--info:#175cd3;--infobg:#e0ecff;--ok:#067647;--okbg:#d1fadf;--bad:#b42318;--badbg:#fee4e2}
+@media (prefers-color-scheme:dark){:root{--bg:#10151c;--card:#1a212b;--tx:#e8edf3;--mut:#9aa6b5;--line:#2a3441;--pri:#e64980;--pri2:#4a1630;--warn:#fdb022;--warnbg:#3b2a0a;--info:#84adff;--infobg:#14284d;--ok:#6ce9a6;--okbg:#0f3322;--bad:#fda29b;--badbg:#431511}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:76px}
 header{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:10px 14px}
@@ -43,6 +43,16 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .login .tabs{margin-top:10px}
 .pin{font-size:22px;font-weight:800;letter-spacing:4px}
 .muted{color:var(--mut)}.sp{height:8px}
+/* Layar lebar (laptop/tablet landscape): menu pindah ke samping kiri */
+@media (min-width:900px){
+body{padding-bottom:0;padding-left:210px}
+header{margin-left:-210px;z-index:8}
+nav{top:56px;bottom:0;right:auto;width:210px;flex-direction:column;justify-content:flex-start;border-top:0;border-right:1px solid var(--line);padding-top:8px}
+nav button{flex:0 0 auto;text-align:left;padding:14px 20px;font-size:14px}
+nav button.on{background:var(--pri2);box-shadow:inset 4px 0 0 var(--pri)}
+main{margin:0 auto;padding:20px 24px}
+#toast{bottom:30px}
+}
 </style>
 </head>
 <body>
@@ -55,6 +65,10 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
    Ganti API_URL dengan URL Web App Apps Script (berakhiran /exec).
    INGAT: placeholder ini harus diisi ulang setiap kali file diganti penuh. */
 const API_URL = 'https://script.google.com/macros/s/AKfycbzVksyBjrp5w902UkpOGKFCldKIrqLLh1y9rSaAEvrL9LyzSUaCMtSYgL6D6nI1s2yOgA/exec';
+
+/* Identitas tampilan. Ganti sesuai pengguna; kosongkan instansi jika tidak ingin ditampilkan. */
+const APP = { nama: 'SIRUJUK', instansi: '' };
+document.title = APP.nama + (APP.instansi ? ' | ' + APP.instansi : '');
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -97,8 +111,8 @@ function logout(expired){
 }
 function renderLogin(note){
   $('#app').innerHTML = `<div class="login"><div class="card">
-  <h2 style="text-align:center">SIRUJUK-RS</h2><div class="muted" style="text-align:center">Sistem Fee Rujukan • RSU Allam Medica</div>
-  <div class="tabs"><button type="button" id="rP" class="${S.role==='PERUJUK'?'on':''}">Perujuk</button><button type="button" id="rA" class="${S.role==='ADMIN'?'on':''}">Admin RS</button></div>
+  <h2 style="text-align:center">${esc(APP.nama)}</h2><div class="muted" style="text-align:center">Sistem Fee Rujukan${APP.instansi?' • '+esc(APP.instansi):''}</div>
+  <div class="tabs"><button type="button" id="rP" class="${S.role==='PERUJUK'?'on':''}">Perujuk</button><button type="button" id="rA" class="${S.role==='ADMIN'?'on':''}">Admin</button></div>
   ${note?`<div class="msg inf">${esc(note)}</div>`:''}<div id="lerr"></div>
   <form id="lf"><label>ID Pengguna</label><input name="id" autocomplete="username" required placeholder="${S.role==='ADMIN'?'contoh: admin':'contoh: P001'}">
   <label>PIN (6 angka)</label><input name="pin" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" required>
@@ -122,7 +136,7 @@ const TABS = {
 };
 function renderShell(){
   const tabs=TABS[S.user.role];
-  $('#app').innerHTML = `<header><div><b>SIRUJUK-RS</b><small>${esc(S.user.nama)} • ${S.user.role==='ADMIN'?'Admin RS':'Perujuk'}</small></div><button id="lo">Keluar</button></header><main id="view"></main><nav id="nav"></nav>`;
+  $('#app').innerHTML = `<header><div><b>${esc(APP.nama)}</b><small>${esc(S.user.nama)} • ${S.user.role==='ADMIN'?'Admin':'Perujuk'}</small></div><button id="lo">Keluar</button></header><main id="view"></main><nav id="nav"></nav>`;
   $('#lo').onclick=()=>logout();
   go(S.tab && tabs.some(t=>t[0]===S.tab) ? S.tab : tabs[0][0]);
 }
