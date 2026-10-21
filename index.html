@@ -333,9 +333,10 @@ async function formPerujuk(r){
   <div class="row"><div><label>Bank</label><input name="bank" value="${esc(r.bank)}"></div><div><label>No. rekening</label><input name="no_rek" value="${esc(r.no_rek)}"></div></div>
   <label>Atas nama</label><input name="atas_nama" value="${esc(r.atas_nama)}">
   ${e?`<label>Status</label><select name="aktif">${opts([{v:'true',l:'Aktif'},{v:'false',l:'Nonaktif'}],r.aktif?'true':'false')}</select>`:''}
-  <div class="row" style="margin-top:12px"><button class="btn">Simpan</button>${e?'<button type="button" class="btn sec" id="rp">Reset PIN</button>':''}<button type="button" class="btn sec" onclick="closeDlg()">Batal</button></div></form>`);
+  <div class="row" style="margin-top:12px"><button class="btn">Simpan</button>${e?'<button type="button" class="btn sec" id="rp">Reset PIN</button><button type="button" class="btn bad" id="hp">Hapus</button>':''}<button type="button" class="btn sec" onclick="closeDlg()">Batal</button></div></form>`);
   $('#pf').onsubmit=async ev=>{ ev.preventDefault(); const o=fd(ev.target); o.aktif=o.aktif!=='false'; if(e) o.id=r.id;
     try{ const d=await api('perujukSave',o); S.meta=null; if(d.pin) showPin(d.id,d.pin,'Perujuk dibuat'); else { closeDlg(); toast('Tersimpan'); } mPerujuk(); }catch(x){ $('#de').innerHTML=err(x); } };
+  if(e) $('#hp').onclick=async()=>{ if(!confirm('Hapus perujuk '+r.nama+' ('+r.id+') secara permanen?')) return; try{ await api('perujukDelete',{id:r.id}); S.meta=null; closeDlg(); toast('Perujuk dihapus'); mPerujuk(); }catch(x){ $('#de').innerHTML=err(x); } };
   if(e) $('#rp').onclick=async()=>{ if(!confirm('Reset PIN '+r.nama+'?')) return; try{ const d=await api('resetPin',{role:'PERUJUK',id:r.id}); showPin(d.id,d.pin,'PIN direset'); }catch(x){ $('#de').innerHTML=err(x); } };
 }
 function showPin(id,pin,title){
@@ -354,7 +355,8 @@ function formTarif(t,m){
   <div class="row"><div><label>Jenis pasien</label><select name="jenis_pasien">${opts(['SEMUA'].concat(m.jenis),t.jenis_pasien)}</select></div><div><label>Kategori perujuk</label><select name="kategori">${opts(['SEMUA'].concat(m.kategori),t.kategori)}</select></div></div>
   <div class="row"><div><label>Tipe fee</label><select name="tipe">${opts([{v:'NOMINAL',l:'Nominal tetap (Rp)'},{v:'PERSEN',l:'Persentase (%) dari tagihan/klaim'}],t.tipe)}</select></div><div><label>Nilai</label><input name="nilai" type="number" step="any" min="0" required value="${esc(t.nilai)}"></div></div>
   <label>Status</label><select name="aktif">${opts([{v:'true',l:'Aktif'},{v:'false',l:'Nonaktif'}],t.aktif?'true':'false')}</select>
-  <div class="row" style="margin-top:12px"><button class="btn">Simpan</button><button type="button" class="btn sec" onclick="closeDlg()">Batal</button></div></form>`);
+  <div class="row" style="margin-top:12px"><button class="btn">Simpan</button>${e?'<button type="button" class="btn bad" id="ht">Hapus</button>':''}<button type="button" class="btn sec" onclick="closeDlg()">Batal</button></div></form>`);
+  if(e) $('#ht').onclick=async()=>{ if(!confirm('Hapus aturan fee "'+t.layanan+'" secara permanen? Fee rujukan yang sudah terverifikasi tidak berubah.')) return; try{ await api('tarifDelete',{id:t.id}); S.meta=null; closeDlg(); toast('Aturan dihapus'); mTarif(); }catch(x){ $('#de').innerHTML=err(x); } };
   $('#tf').onsubmit=async ev=>{ ev.preventDefault(); const o=fd(ev.target); o.aktif=o.aktif!=='false'; if(e) o.id=t.id; try{ await api('tarifSave',o); S.meta=null; closeDlg(); toast('Tersimpan'); mTarif(); }catch(x){ $('#de').innerHTML=err(x); } };
 }
 async function mAdmin(){
