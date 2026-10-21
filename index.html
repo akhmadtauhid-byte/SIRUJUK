@@ -43,6 +43,8 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .login .tabs{margin-top:10px}
 .pin{font-size:22px;font-weight:800;letter-spacing:4px}
 .muted{color:var(--mut)}.sp{height:8px}
+.pw{position:relative}.pw input{padding-right:52px}
+.pw .eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:0;font-size:20px;line-height:1;padding:8px 10px;color:var(--mut);cursor:pointer}
 /* Layar lebar (laptop/tablet landscape): menu pindah ke samping kiri */
 @media (min-width:900px){
 body{padding-bottom:0;padding-left:210px}
@@ -96,6 +98,13 @@ function loading(){ view('<div class="empty">Memuat…</div>'); }
 function err(e){ return `<div class="msg err">${esc(e.message||e)}</div>`; }
 async function getMeta(){ if(!S.meta) S.meta = await api('meta'); return S.meta; }
 function opts(list, sel, blank){ return (blank?`<option value="">${esc(blank)}</option>`:'')+list.map(x=>{const v=typeof x==='object'?x.v:x, l=typeof x==='object'?x.l:x; return `<option value="${esc(v)}" ${v===sel?'selected':''}>${esc(l)}</option>`}).join(''); }
+/* Kolom PIN dengan tombol mata (tampilkan/sembunyikan) */
+function pw(attrs){ return `<div class="pw"><input ${attrs} type="password" inputmode="numeric" maxlength="6" required><button type="button" class="eye" aria-label="Tampilkan PIN">👁</button></div>`; }
+document.addEventListener('click',e=>{
+  const b=e.target.closest&&e.target.closest('.eye'); if(!b) return;
+  const i=b.parentNode.querySelector('input'); const show=i.type==='password';
+  i.type=show?'text':'password'; b.textContent=show?'🙈':'👁'; b.setAttribute('aria-label',show?'Sembunyikan PIN':'Tampilkan PIN');
+});
 function fd(form){ const o={}; new FormData(form).forEach((v,k)=>o[k]=v); return o; }
 function csv(rows, cols, name){
   const q = v => '"'+String(v==null?'':v).replace(/"/g,'""')+'"';
@@ -115,7 +124,7 @@ function renderLogin(note){
   <div class="tabs"><button type="button" id="rP" class="${S.role==='PERUJUK'?'on':''}">Perujuk</button><button type="button" id="rA" class="${S.role==='ADMIN'?'on':''}">Admin</button></div>
   ${note?`<div class="msg inf">${esc(note)}</div>`:''}<div id="lerr"></div>
   <form id="lf"><label>ID Pengguna</label><input name="id" autocomplete="username" required placeholder="${S.role==='ADMIN'?'contoh: admin':'contoh: P001'}">
-  <label>PIN (6 angka)</label><input name="pin" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" required>
+  <label>PIN (6 angka)</label>${pw('name="pin" autocomplete="current-password"')}
   <div class="sp"></div><button class="btn" style="width:100%">Masuk</button></form>
   <p class="muted" style="font-size:12px;margin-bottom:0">Lupa PIN? Hubungi admin RS.</p></div></div>`;
   $('#rP').onclick=()=>{S.role='PERUJUK';renderLogin();};
@@ -216,8 +225,8 @@ async function vProfil(){
   <label>Alamat</label><input name="alamat" value="${esc(p.alamat)}">
   <div class="row"><div><label>Bank</label><input name="bank" value="${esc(p.bank)}"></div><div><label>No. rekening</label><input name="no_rek" value="${esc(p.no_rek)}" inputmode="numeric"></div></div>
   <label>Atas nama</label><input name="atas_nama" value="${esc(p.atas_nama)}"><div class="sp"></div><button class="btn">Simpan</button></form></div>
-  <div class="card"><h3 style="margin-top:0">Ganti PIN</h3><div id="ce"></div><form id="cf"><label>PIN lama</label><input name="old_pin" type="password" inputmode="numeric" maxlength="6" required>
-  <label>PIN baru (6 angka)</label><input name="new_pin" type="password" inputmode="numeric" maxlength="6" required><div class="sp"></div><button class="btn sec">Ganti PIN</button></form></div>`);
+  <div class="card"><h3 style="margin-top:0">Ganti PIN</h3><div id="ce"></div><form id="cf"><label>PIN lama</label>${pw('name="old_pin" autocomplete="current-password"')}
+  <label>PIN baru (6 angka)</label>${pw('name="new_pin" autocomplete="new-password"')}<div class="sp"></div><button class="btn sec">Ganti PIN</button></form></div>`);
   $('#pf').onsubmit=async e=>{ e.preventDefault(); try{ await api('profileSave',fd(e.target)); toast('Profil tersimpan'); }catch(x){ $('#pe').innerHTML=err(x); } };
   $('#cf').onsubmit=async e=>{ e.preventDefault(); try{ await api('changePin',fd(e.target)); toast('PIN diganti'); e.target.reset(); $('#ce').innerHTML=''; }catch(x){ $('#ce').innerHTML=err(x); } };
 }
@@ -391,7 +400,7 @@ function formTarif(t,m){
 async function mAdmin(){
   const rows=await api('adminList');
   $('#mc').innerHTML=`<button class="btn" id="add" style="margin-bottom:10px">+ Tambah admin</button><div class="card">${rows.map(r=>`<div class="item"><div><b>${esc(r.nama)}</b> ${r.aktif?'':'<span class="badge b-bad">Nonaktif</span>'}<br><small>${esc(r.id)}</small></div><div class="r">${r.id!==S.user.id?`<button class="btn sec sm" data-r="${esc(r.id)}">Reset PIN</button> <button class="btn sec sm" data-t="${esc(r.id)}" data-a="${r.aktif}">${r.aktif?'Nonaktifkan':'Aktifkan'}</button>`:'<small class="muted">Akun Anda</small>'}</div></div>`).join('')}</div>
-  <div class="card"><h3 style="margin-top:0">Ganti PIN saya</h3><div id="ce"></div><form id="cf"><label>PIN lama</label><input name="old_pin" type="password" inputmode="numeric" maxlength="6" required><label>PIN baru (6 angka)</label><input name="new_pin" type="password" inputmode="numeric" maxlength="6" required><div class="sp"></div><button class="btn sec">Ganti PIN</button></form></div>`;
+  <div class="card"><h3 style="margin-top:0">Ganti PIN saya</h3><div id="ce"></div><form id="cf"><label>PIN lama</label>${pw('name="old_pin" autocomplete="current-password"')}<label>PIN baru (6 angka)</label>${pw('name="new_pin" autocomplete="new-password"')}<div class="sp"></div><button class="btn sec">Ganti PIN</button></form></div>`;
   $('#add').onclick=()=>{ openDlg(`<h3 style="margin-top:0">Tambah admin</h3><div id="de"></div><form id="af"><label>ID (huruf kecil/angka, 3-20)</label><input name="id" required><label>Nama</label><input name="nama" required><div class="row" style="margin-top:12px"><button class="btn">Buat</button><button type="button" class="btn sec" onclick="closeDlg()">Batal</button></div></form>`);
     $('#af').onsubmit=async ev=>{ ev.preventDefault(); try{ const d=await api('adminCreate',fd(ev.target)); showPin(d.id,d.pin,'Admin dibuat'); mAdmin(); }catch(x){ $('#de').innerHTML=err(x); } }; };
   document.querySelectorAll('[data-r]').forEach(b=>b.onclick=async()=>{ if(!confirm('Reset PIN '+b.dataset.r+'?')) return; try{ const d=await api('resetPin',{role:'ADMIN',id:b.dataset.r}); showPin(d.id,d.pin,'PIN direset'); }catch(x){ toast(x.message); } });
