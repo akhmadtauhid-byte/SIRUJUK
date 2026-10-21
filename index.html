@@ -43,6 +43,40 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 .login .tabs{margin-top:10px}
 .pin{font-size:22px;font-weight:800;letter-spacing:4px}
 .muted{color:var(--mut)}.sp{height:8px}
+/* Halaman depan (login) */
+body.landing{padding:0;background:var(--bg)}
+.land{min-height:100vh;display:grid;grid-template-columns:1fr}
+.hero{position:relative;overflow:hidden;color:#fff;padding:30px 22px 84px;background:linear-gradient(140deg,#a61e4d 0%,#d6336c 45%,#f06595 100%)}
+.hero::before,.hero::after{content:"";position:absolute;border-radius:50%;pointer-events:none}
+.hero::before{width:340px;height:340px;right:-120px;top:-100px;background:radial-gradient(circle,rgba(255,255,255,.28),rgba(255,255,255,0) 70%)}
+.hero::after{width:300px;height:300px;left:-110px;bottom:-120px;background:radial-gradient(circle,rgba(255,255,255,.2),rgba(255,255,255,0) 70%)}
+.hero>*{position:relative;z-index:1}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:20px;letter-spacing:.3px}
+.logo{width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.2);display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)}
+.hero h1{font-size:28px;line-height:1.2;margin:24px 0 10px;font-weight:800}
+.hero .lead{margin:0 0 18px;opacity:.92;max-width:460px}
+.feats{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:520px}
+.feat{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:14px;padding:12px}
+.feat i{font-style:normal;font-size:20px}.feat b{display:block;font-size:13px;margin:4px 0 2px}.feat span{font-size:12px;opacity:.9;line-height:1.35;display:block}
+.chips{display:none}
+.chip{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#fff;color:#2a1b24;border-radius:12px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.18);font-size:13px;animation:fl 6s ease-in-out infinite}
+.chip:nth-child(2){margin-left:34px;animation-delay:-2s}.chip:nth-child(3){margin-left:12px;animation-delay:-4s}
+.side{position:relative;z-index:2;display:flex;justify-content:center;padding:0 16px 28px;margin-top:-58px}
+.side>div{width:100%;max-width:400px}
+.side .card{border-radius:18px;padding:20px;box-shadow:0 18px 50px rgba(194,37,92,.25)}
+.foot{text-align:center;color:var(--mut);font-size:12px;margin-top:14px}
+@keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.hero>*,.side .card{animation:up .6s ease both}
+.hero>*:nth-child(2){animation-delay:.1s}.hero>*:nth-child(3){animation-delay:.2s}.side .card{animation-delay:.15s}
+@media (min-width:900px){
+.land{grid-template-columns:1.15fr .85fr}
+.hero{padding:48px 56px;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.hero h1{font-size:40px;margin-top:34px}
+.chips{display:flex;flex-direction:column;gap:10px;margin-top:26px;max-width:320px}
+.side{align-items:center;margin-top:0;padding:32px}
+}
+@media (prefers-reduced-motion:reduce){.chip,.hero>*,.side .card{animation:none}}
 .pw{position:relative}.pw input{padding-right:52px}
 .pw .eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:0;font-size:20px;line-height:1;padding:8px 10px;color:var(--mut);cursor:pointer}
 /* Layar lebar (laptop/tablet landscape): menu pindah ke samping kiri */
@@ -112,6 +146,56 @@ function csv(rows, cols, name){
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv;charset=utf-8'})); a.download=name; a.click();
 }
 
+/* ============ DAFTAR PASIEN RUJUKAN: CSV + CETAK/PDF ============ */
+function urut(rows){ return rows.slice().sort((a,b)=>(a.nama_perujuk||'').localeCompare(b.nama_perujuk||'')||(a.tgl_kunjungan<b.tgl_kunjungan?-1:a.tgl_kunjungan>b.tgl_kunjungan?1:0)); }
+function bangunCetak(o){
+  const adm=o.admin, nom=o.nominal, sl=s=>(STAT[s]||[s])[0];
+  const feeOf=r=>(r.status==='TERVERIFIKASI'||r.status==='DIBAYAR')?r.fee:0;
+  const grp={}; o.rows.forEach(r=>{ (grp[r.id_perujuk]||(grp[r.id_perujuk]={nama:r.nama_perujuk,kat:r.kategori_perujuk,rows:[]})).rows.push(r); });
+  const ks=Object.keys(grp).sort((a,b)=>grp[a].nama.localeCompare(grp[b].nama));
+  let totAll=0;
+  const secs=ks.map(k=>{
+    const g=grp[k]; g.rows.sort((a,b)=>a.tgl_kunjungan<b.tgl_kunjungan?-1:a.tgl_kunjungan>b.tgl_kunjungan?1:0);
+    const sub=g.rows.reduce((s,r)=>s+feeOf(r),0); totAll+=sub;
+    const body=g.rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.tgl_kunjungan)}</td><td>${esc(r.nama_pasien)}</td>${adm?'<td>'+esc(r.no_rm)+'</td>':''}<td>${esc(r.jenis_pasien)}</td><td>${esc(r.layanan)}</td><td>${esc(sl(r.status))}</td>${nom?'<td class="n">'+(feeOf(r)?rp(feeOf(r)):'–')+'</td>':''}</tr>`).join('');
+    const tot=nom?`<tr class="tot"><td colspan="${adm?7:6}">Subtotal</td><td class="n">${rp(sub)}</td></tr>`:'';
+    return `<h2>${esc(g.nama)} <span class="k">(${esc(g.kat)})</span> — ${g.rows.length} pasien</h2><table><tr><th>No</th><th>Tgl kunjungan</th><th>Pasien</th>${adm?'<th>No. RM</th>':''}<th>Jenis pasien</th><th>Layanan</th><th>Status</th>${nom?'<th class="n">Nominal</th>':''}</tr>${body}${tot}</table>`;
+  }).join('');
+  const cnt={BARU:0,TERVERIFIKASI:0,DIBAYAR:0,DITOLAK:0}; o.rows.forEach(r=>cnt[r.status]=(cnt[r.status]||0)+1);
+  const periode=(o.dari||'awal')+' s.d. '+(o.sampai||'sekarang');
+  return `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Rekap Rujukan ${esc(APP.nama)}</title><style>
+  body{font:12px Arial,Helvetica,sans-serif;color:#111;margin:24px}
+  h1{font-size:18px;margin:0}h2{font-size:13px;margin:16px 0 6px}.k{font-weight:normal;color:#555}
+  .meta{color:#444;margin:4px 0 12px;line-height:1.6}
+  table{width:100%;border-collapse:collapse;margin-bottom:8px}
+  th,td{border:1px solid #888;padding:5px 6px;text-align:left;font-size:11px}th{background:#f1f1f1}
+  td.n,th.n{text-align:right}.tot td{font-weight:bold;background:#fafafa}
+  .sum{border:1px solid #888;padding:8px 10px;margin-top:14px;line-height:1.7}
+  .foot{color:#777;font-size:10px;margin-top:18px}
+  @media print{@page{size:A4 landscape;margin:12mm}body{margin:0}h2{break-after:avoid}tr{break-inside:avoid}}
+  </style></head><body>
+  <h1>Rekap Pasien Rujukan</h1>
+  <div class="meta">${esc(APP.nama)}${APP.instansi?' • '+esc(APP.instansi):''}<br>Periode kunjungan: ${esc(periode)}<br>Perujuk: ${esc(o.perujuk||'Semua')} • Status: ${esc(o.statusLabel||'Semua')}</div>
+  ${secs||'<p>Tidak ada data.</p>'}
+  <div class="sum"><b>Ringkasan:</b> ${o.rows.length} rujukan • Menunggu ${cnt.BARU} • Terverifikasi ${cnt.TERVERIFIKASI} • Dibayar ${cnt.DIBAYAR} • Ditolak ${cnt.DITOLAK}${nom?'<br><b>Total nominal (terverifikasi + dibayar): '+rp(totAll)+'</b>':''}</div>
+  <div class="foot">Dicetak ${esc(new Date().toLocaleString('id-ID'))} oleh ${esc(S.user?S.user.nama:'')}</div>
+  </body></html>`;
+}
+function cetakHtml(html){
+  const f=document.createElement('iframe'); f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+  document.body.appendChild(f);
+  const d=f.contentWindow.document; d.open(); d.write(html); d.close();
+  setTimeout(()=>{ try{ f.contentWindow.focus(); f.contentWindow.print(); }catch(e){ toast('Dialog cetak gagal dibuka'); } setTimeout(()=>f.remove(),60000); },400);
+  toast('Di dialog cetak, pilih "Simpan sebagai PDF" untuk menyimpan');
+}
+function csvDaftar(rows, admin, nominal, name){
+  const cols=[['nama_perujuk','Perujuk'],['id','ID Rujukan'],['tgl_kunjungan','Tgl Kunjungan'],['nama_pasien','Pasien']];
+  if(admin) cols.push(['no_rm','No RM']);
+  cols.push(['jenis_pasien','Jenis Pasien'],['layanan','Layanan'],['status','Status']);
+  if(nominal) cols.push(['fee','Nominal']);
+  csv(urut(rows),cols,name);
+}
+
 /* ============ LOGIN / SHELL ============ */
 function logout(expired){
   S.token=null; S.user=null; S.meta=null; S.tab=null;
@@ -119,14 +203,38 @@ function logout(expired){
   renderLogin(expired?'Sesi berakhir, silakan login ulang.':'');
 }
 function renderLogin(note){
-  $('#app').innerHTML = `<div class="login"><div class="card">
-  <h2 style="text-align:center">${esc(APP.nama)}</h2><div class="muted" style="text-align:center">Sistem Rujukan${APP.instansi?' • '+esc(APP.instansi):''}</div>
-  <div class="tabs"><button type="button" id="rP" class="${S.role==='PERUJUK'?'on':''}">Perujuk</button><button type="button" id="rA" class="${S.role==='ADMIN'?'on':''}">Admin</button></div>
-  ${note?`<div class="msg inf">${esc(note)}</div>`:''}<div id="lerr"></div>
-  <form id="lf"><label>ID Pengguna</label><input name="id" autocomplete="username" required placeholder="${S.role==='ADMIN'?'contoh: admin':'contoh: P001'}">
-  <label>PIN (6 angka)</label>${pw('name="pin" autocomplete="current-password"')}
-  <div class="sp"></div><button class="btn" style="width:100%">Masuk</button></form>
-  <p class="muted" style="font-size:12px;margin-bottom:0">Lupa PIN? Hubungi admin RS.</p></div></div>`;
+  document.body.classList.add('landing');
+  $('#app').innerHTML = `<div class="land">
+  <section class="hero">
+    <div class="brand"><span class="logo"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="19" cy="18" r="2.2"/><path d="M7.2 11.2 16.8 6.8M7.2 12.8 16.8 17.2"/></svg></span><span>${esc(APP.nama)}${APP.instansi?'<small style="font-weight:500;opacity:.85"> • '+esc(APP.instansi)+'</small>':''}</span></div>
+    <div>
+      <h1>Rujukan pasien, lebih rapi dan terkoordinasi.</h1>
+      <p class="lead">Satu portal untuk perujuk dan admin: input, verifikasi, dan rekap dalam satu tempat.</p>
+      <div class="feats">
+        <div class="feat"><i>⚡</i><b>Input cepat</b><span>Kirim rujukan dalam hitungan detik</span></div>
+        <div class="feat"><i>📲</i><b>Pantau langsung</b><span>Status terbarui, nyaman dari HP</span></div>
+        <div class="feat"><i>📊</i><b>Rekap otomatis</b><span>Tanpa hitung manual</span></div>
+        <div class="feat"><i>🔒</i><b>Data terjaga</b><span>Nama pasien disamarkan, aktivitas tercatat</span></div>
+      </div>
+    </div>
+    <div class="chips" aria-hidden="true">
+      <div class="chip"><span>Rujukan baru dikirim</span><span class="badge b-warn">Menunggu</span></div>
+      <div class="chip"><span>Diperiksa oleh admin</span><span class="badge b-info">Terverifikasi</span></div>
+      <div class="chip"><span>Proses selesai</span><span class="badge b-ok">Selesai</span></div>
+    </div>
+  </section>
+  <section class="side"><div>
+    <div class="card">
+      <h2 style="margin:0 0 2px">Selamat datang</h2><div class="muted" style="margin-bottom:6px">Masuk untuk mengelola rujukan</div>
+      <div class="tabs"><button type="button" id="rP" class="${S.role==='PERUJUK'?'on':''}">Perujuk</button><button type="button" id="rA" class="${S.role==='ADMIN'?'on':''}">Admin</button></div>
+      ${note?`<div class="msg inf">${esc(note)}</div>`:''}<div id="lerr"></div>
+      <form id="lf"><label>ID Pengguna</label><input name="id" autocomplete="username" required placeholder="${S.role==='ADMIN'?'contoh: admin':'contoh: P001'}">
+      <label>PIN (6 angka)</label>${pw('name="pin" autocomplete="current-password"')}
+      <div class="sp"></div><button class="btn" style="width:100%;padding:12px">Masuk</button></form>
+      <p class="muted" style="font-size:12px;margin-bottom:0">Lupa PIN? Hubungi admin.</p>
+    </div>
+    <div class="foot">© ${new Date().getFullYear()} ${esc(APP.nama)}</div>
+  </div></section></div>`;
   $('#rP').onclick=()=>{S.role='PERUJUK';renderLogin();};
   $('#rA').onclick=()=>{S.role='ADMIN';renderLogin();};
   $('#lf').onsubmit=async e=>{
@@ -144,6 +252,7 @@ const TABS = {
   ADMIN:[['dash','Dashboard',aDash],['verif','Verifikasi',aVerif],['rujukan','Rujukan',aRujukan],['bayar','Bayar',aBayar],['rekap','Rekap',aRekap],['master','Master',aMaster]]
 };
 function renderShell(){
+  document.body.classList.remove('landing');
   const tabs=TABS[S.user.role];
   $('#app').innerHTML = `<header><div><b>${esc(APP.nama)}</b><small>${esc(S.user.nama)} • ${S.user.role==='ADMIN'?'Admin':'Perujuk'}</small></div><button id="lo">Keluar</button></header><main id="view"></main><nav id="nav"></nav>`;
   $('#lo').onclick=()=>logout();
@@ -204,9 +313,13 @@ async function vInput(){
 }
 async function vRiwayat(){
   view(`<h2>Riwayat Rujukan</h2><div class="card"><select id="fs">${opts([{v:'BARU',l:'Menunggu'},{v:'TERVERIFIKASI',l:'Terverifikasi'},{v:'DIBAYAR',l:'Dibayar'},{v:'DITOLAK',l:'Ditolak'}],'','Semua status')}</select>
-  <div class="row"><div><label>Dari tgl kunjungan</label><input id="rfd" type="date"></div><div><label>Sampai</label><input id="rtd" type="date"></div></div></div><div class="card" id="lst"></div>`);
+  <div class="row"><div><label>Dari tgl kunjungan</label><input id="rfd" type="date"></div><div><label>Sampai</label><input id="rtd" type="date"></div></div>
+  <div class="row" style="margin-top:10px"><button class="btn sec sm" id="pcsv">Unduh CSV</button><button class="btn sm" id="pprint">Cetak / Simpan PDF</button></div></div><div class="card" id="lst"></div>`);
   const load=async()=>{ $('#lst').innerHTML='<div class="empty">Memuat…</div>'; try{ const d=await api('rujukan',{status:$('#fs').value,from:$('#rfd').value,to:$('#rtd').value}); $('#lst').innerHTML=d.rows.length?d.rows.map(r=>rujukanItem(r)).join('')+(d.total>d.rows.length?`<div class="muted">Menampilkan ${d.rows.length} dari ${d.total}</div>`:''):'<div class="empty">Tidak ada data</div>'; }catch(x){ $('#lst').innerHTML=err(x); } };
   ['fs','rfd','rtd'].forEach(i=>$('#'+i).onchange=load); load();
+  const ambilP=async()=>{ const d=await api('rujukan',{status:$('#fs').value,from:$('#rfd').value,to:$('#rtd').value}); if(!d.rows.length){ toast('Tidak ada data'); return null; } if(d.total>d.rows.length) toast('Hanya '+d.rows.length+' dari '+d.total+' data, persempit rentang tanggal'); return d.rows; };
+  $('#pcsv').onclick=async()=>{ try{ const rows=await ambilP(); if(rows) csvDaftar(rows,false,false,'rujukan_saya_'+todayStr()+'.csv'); }catch(x){ toast(x.message); } };
+  $('#pprint').onclick=async()=>{ try{ const rows=await ambilP(); if(rows) cetakHtml(bangunCetak({rows,admin:false,nominal:false,dari:$('#rfd').value,sampai:$('#rtd').value,perujuk:S.user.nama,statusLabel:$('#fs').selectedOptions[0].text})); }catch(x){ toast(x.message); } };
 }
 async function vBayarP(){
   const rows = await api('pembayaran');
@@ -342,10 +455,18 @@ async function aRekap(){
     D=await api('rekap',{from:$('#rf').value,to:$('#rt').value,id_perujuk:$('#rpj').value});
     const tot=D.perujuk.reduce((a,p)=>({t:a.t+p.fee_terutang,d:a.d+p.fee_dibayar,n:a.n+p.total}),{t:0,d:0,n:0});
     $('#out').innerHTML=`<div class="grid"><div class="stat"><span>Total rujukan</span><b>${tot.n}</b></div><div class="stat"><span>Fee belum dibayar</span><b>${rp(tot.t)}</b></div><div class="stat"><span>Fee dibayar</span><b>${rp(tot.d)}</b></div></div>
+    <div class="card"><h3 style="margin-top:0">Daftar pasien rujukan</h3>
+    <div class="row"><div><label style="margin-top:0">Status</label><select id="rst">${opts([{v:'BARU',l:'Menunggu'},{v:'TERVERIFIKASI',l:'Terverifikasi'},{v:'DIBAYAR',l:'Dibayar'},{v:'DITOLAK',l:'Ditolak'}],'','Semua status')}</select></div>
+    <label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:0"><input type="checkbox" id="rnom" style="width:auto" checked> Sertakan nominal</label></div>
+    <div class="muted" style="font-size:12px;margin:6px 0">Mengikuti filter perujuk dan tanggal di atas.</div>
+    <div class="row"><button class="btn sm" id="cx">Cetak / Simpan PDF</button><button class="btn sec sm" id="cd">Unduh CSV daftar pasien</button></div></div>
     <div class="row" style="margin-bottom:8px"><button class="btn sec sm" id="cp">Unduh CSV per perujuk</button><button class="btn sec sm" id="cl">Unduh CSV per layanan</button></div>
     <h3>Per perujuk</h3><div class="card tbl"><table><tr><th>Perujuk</th><th>Kategori</th><th class="n">Total</th><th class="n">Menunggu</th><th class="n">Ditolak</th><th class="n">Terverif.</th><th class="n">Dibayar</th><th class="n">Fee belum bayar</th><th class="n">Fee dibayar</th></tr>${D.perujuk.map(p=>`<tr><td>${esc(p.nama)}</td><td>${esc(p.kategori)}</td><td class="n">${p.total}</td><td class="n">${p.baru}</td><td class="n">${p.ditolak}</td><td class="n">${p.terverifikasi}</td><td class="n">${p.dibayar}</td><td class="n">${rp(p.fee_terutang)}</td><td class="n">${rp(p.fee_dibayar)}</td></tr>`).join('')||'<tr><td colspan="9" class="empty">Tidak ada data</td></tr>'}</table></div>
     <h3>Per layanan (terverifikasi + dibayar)</h3><div class="card tbl"><table><tr><th>Layanan</th><th class="n">Rujukan</th><th class="n">Fee</th></tr>${D.layanan.map(l=>`<tr><td>${esc(l.layanan)}</td><td class="n">${l.rujukan}</td><td class="n">${rp(l.fee)}</td></tr>`).join('')||'<tr><td colspan="3" class="empty">Tidak ada data</td></tr>'}</table></div>`;
     $('#cp').onclick=()=>csv(D.perujuk,[['id','ID'],['nama','Perujuk'],['kategori','Kategori'],['total','Total Rujukan'],['baru','Menunggu'],['ditolak','Ditolak'],['terverifikasi','Terverifikasi'],['dibayar','Dibayar'],['fee_terutang','Fee Belum Dibayar'],['fee_dibayar','Fee Dibayar']],'rekap_perujuk_'+$('#rf').value+'_sd_'+$('#rt').value+'.csv');
+    const ambilA=async()=>{ const d=await api('rujukan',{status:$('#rst').value,id_perujuk:$('#rpj').value,from:$('#rf').value,to:$('#rt').value}); if(!d.rows.length){ toast('Tidak ada data'); return null; } if(d.total>d.rows.length) toast('Hanya '+d.rows.length+' dari '+d.total+' data, persempit rentang tanggal'); return d.rows; };
+    $('#cd').onclick=async()=>{ try{ const rows=await ambilA(); if(rows) csvDaftar(rows,true,$('#rnom').checked,'daftar_pasien_rujukan_'+$('#rf').value+'_sd_'+$('#rt').value+'.csv'); }catch(x){ toast(x.message); } };
+    $('#cx').onclick=async()=>{ try{ const rows=await ambilA(); if(rows) cetakHtml(bangunCetak({rows,admin:true,nominal:$('#rnom').checked,dari:$('#rf').value,sampai:$('#rt').value,perujuk:$('#rpj').selectedOptions[0].text,statusLabel:$('#rst').selectedOptions[0].text})); }catch(x){ toast(x.message); } };
     $('#cl').onclick=()=>csv(D.layanan,[['layanan','Layanan'],['rujukan','Rujukan'],['fee','Fee']],'rekap_layanan_'+$('#rf').value+'_sd_'+$('#rt').value+'.csv');
   }catch(x){ $('#out').innerHTML=err(x); } };
   $('#rg').onclick=load; load();
