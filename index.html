@@ -54,7 +54,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 /* ============ KONFIGURASI ============
    Ganti API_URL dengan URL Web App Apps Script (berakhiran /exec).
    INGAT: placeholder ini harus diisi ulang setiap kali file diganti penuh. */
-const API_URL = 'API_URL';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzVksyBjrp5w902UkpOGKFCldKIrqLLh1y9rSaAEvrL9LyzSUaCMtSYgL6D6nI1s2yOgA/exec';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
