@@ -392,6 +392,7 @@ async function openProses(id){
   <div id="pm"></div>
   <div class="msg inf" id="pp">Menghitung fee…</div>
   <div id="pa" style="display:none"><label>Alasan tetap memverifikasi (pasien ini sudah diverifikasi/dibayar atas perujuk lain)</label><textarea id="pk" maxlength="300" placeholder="Contoh: kunjungan berbeda / rujukan awal tidak sah"></textarea></div>
+  <div id="pb"></div>
   <div class="row" style="margin-top:6px"><button class="btn" id="bv" disabled>Verifikasi</button><button class="btn bad" id="bt">Tolak</button><button class="btn sec" id="hd">Hapus</button><button class="btn sec" onclick="closeDlg()">Batal</button></div>`);
   let fee=null, perlu=false;
   const upd=()=>{ $('#bv').disabled = fee===null || (perlu && $('#pk').value.trim().length<5); };
@@ -400,6 +401,9 @@ async function openProses(id){
       const d=await api('previewFee',{id,layanan:$('#pl').value,jenis_pasien:$('#pj').value,nilai_dasar:$('#pv').value});
       $('#pn').style.display=d.perlu_nilai_dasar?'block':'none'; fee=d.fee;
       perlu=d.perlu_alasan; $('#pm').innerHTML=miripPanel(d.mirip); $('#pa').style.display=perlu?'block':'none';
+      const kand=d.mirip.filter(m=>m.status==='BARU');
+      $('#pb').innerHTML=kand.length?`<div class="msg inf">Pasien ini juga dirujuk oleh ${kand.length} perujuk lain yang masih menunggu. Jika kebijakan RS membagi satu fee untuk semuanya, gunakan pembagian.<div class="sp"></div><button class="btn sm" id="bb">Bagi fee dengan perujuk lain</button></div>`:'';
+      if(kand.length) $('#bb').onclick=()=>openBagi(r,kand,{layanan:$('#pl').value,jenis_pasien:$('#pj').value});
       if(!d.tarif){ $('#pp').className='msg err'; $('#pp').textContent='Belum ada aturan fee untuk kombinasi ini. Tambahkan di Master > Tarif.'; }
       else if(d.fee===null){ $('#pp').className='msg inf'; $('#pp').textContent='Aturan: '+d.tarif.nilai+'% — isi nilai tagihan/klaim.'; }
       else { $('#pp').className='msg ok'; $('#pp').innerHTML='Fee: <b>'+rp(d.fee)+'</b> ('+(d.tarif.tipe==='PERSEN'?d.tarif.nilai+'%':'nominal tetap')+')'; }
@@ -410,6 +414,63 @@ async function openProses(id){
   $('#bv').onclick=async()=>{ $('#bv').disabled=true; try{ await api('verify',{id,layanan:$('#pl').value,jenis_pasien:$('#pj').value,nilai_dasar:$('#pv').value,ket_ganda:$('#pk').value}); closeDlg(); toast('Terverifikasi'); aVerif(); }catch(x){ $('#de').innerHTML=err(x); $('#bv').disabled=false; } };
   $('#hd').onclick=async()=>{ if(!confirm('Hapus rujukan '+id+' ('+r.nama_pasien+') secara permanen? Gunakan Tolak bila jejaknya ingin disimpan.')) return; try{ await api('rujukanDelete',{id}); closeDlg(); toast('Rujukan dihapus'); aVerif(); }catch(x){ $('#de').innerHTML=err(x); } };
   $('#bt').onclick=async()=>{ const a=prompt('Alasan penolakan:'); if(!a) return; try{ await api('reject',{id,alasan:a}); closeDlg(); toast('Ditolak'); aVerif(); }catch(x){ $('#de').innerHTML=err(x); } };
+}
+
+function openBagi(r, kand, ov){
+  const semua=[{id:r.id,nama:r.nama_perujuk,kategori:r.kategori_perujuk}].concat(kand.map(k=>({id:k.id,nama:k.nama_perujuk,kategori:k.kategori_perujuk})));
+  openDlg(`<h3 style="margin-top:0">Bagi fee — ${esc(r.nama_pasien)}</h3><div id="de"></div>
+  <div class="muted" style="margin-bottom:6px">${esc(ov.layanan)} • ${esc(ov.jenis_pasien)} • ${esc(r.tgl_kunjungan)}. Centang perujuk yang ikut menerima bagian.</div>
+  <div id="bl">${semua.map(a=>`<div class="item" style="align-items:center"><label style="display:flex;gap:8px;align-items:center;font-weight:400;margin:0;flex:1"><input type="checkbox" class="bc" value="${esc(a.id)}" checked style="width:auto"><span><b>${esc(a.nama)}</b><br><small class="muted">${esc(a.kategori)} • ${esc(a.id)}</small></span></label><div class="r" style="min-width:130px"><input class="bp" data-i="${esc(a.id)}" type="number" step="any" min="0" max="100" style="width:96px;text-align:right"> %<br><small class="bf muted" data-i="${esc(a.id)}"></small></div></div>`).join('')}</div>
+  <div id="bn" style="display:none"><label>Nilai tagihan/klaim (Rp)</label><input id="bnv" type="number" min="0" inputmode="numeric"></div>
+  <div class="msg inf" id="bs">Menghitung…</div>
+  <label>Catatan pembagian (opsional)</label><textarea id="bk" maxlength="300" placeholder="Contoh: dokter dan driver sama-sama mengantar pasien"></textarea>
+  <div class="row" style="margin-top:6px"><button class="btn" id="bgo" disabled>Verifikasi &amp; bagi fee</button><button class="btn sec" id="bcl">Kembali</button></div>`);
+  let manual=false, okp=false;
+  const ids=()=>[...document.querySelectorAll('.bc:checked')].map(c=>c.value);
+  const prev=async(useManual)=>{
+    const ii=ids(); okp=false; $('#bgo').disabled=true;
+    document.querySelectorAll('.bp').forEach(x=>{ x.disabled=!ii.includes(x.dataset.i); if(!ii.includes(x.dataset.i)){ x.value=''; } });
+    document.querySelectorAll('.bf').forEach(x=>{ if(!ii.includes(x.dataset.i)) x.textContent=''; });
+    if(ii.length<2){ $('#bs').className='msg err'; $('#bs').textContent='Pilih minimal dua perujuk.'; return; }
+    const q={ids:ii,layanan:ov.layanan,jenis_pasien:ov.jenis_pasien,nilai_dasar:$('#bnv').value};
+    if(useManual){ q.persen={}; ii.forEach(i=>q.persen[i]=document.querySelector('.bp[data-i="'+i+'"]').value||0); }
+    try{
+      const d=await api('previewBagi',q);
+      $('#bn').style.display=d.perlu_nilai_dasar?'block':'none';
+      d.anggota.forEach(a=>{ const e=document.querySelector('.bp[data-i="'+a.id+'"]'); if(!useManual) e.value=a.persen; const f=document.querySelector('.bf[data-i="'+a.id+'"]'); f.textContent=a.fee===null?'':rp(a.fee); });
+      if(!d.tarif){ $('#bs').className='msg err'; $('#bs').textContent='Belum ada aturan fee untuk kombinasi ini. Tambahkan di Master > Tarif.'; }
+      else if(d.pool===null){ $('#bs').className='msg inf'; $('#bs').textContent='Aturan '+d.tarif.nilai+'% — isi nilai tagihan/klaim.'; }
+      else { $('#bs').className='msg ok'; $('#bs').innerHTML='Total fee untuk pasien ini: <b>'+rp(d.pool)+'</b>, dibagi sesuai porsi. Persen bisa diubah manual (jumlah harus 100%).'; okp=true; }
+      $('#bgo').disabled=!okp;
+    }catch(x){ $('#bs').className='msg err'; $('#bs').textContent=x.message; }
+  };
+  document.querySelectorAll('.bc').forEach(c=>c.onchange=()=>{ manual=false; prev(false); });
+  document.querySelectorAll('.bp').forEach(x=>x.oninput=()=>{ manual=true; prev(true); });
+  $('#bnv').oninput=()=>prev(manual);
+  $('#bcl').onclick=()=>openProses(r.id);
+  $('#bgo').onclick=async()=>{
+    const ii=ids(); const q={ids:ii,layanan:ov.layanan,jenis_pasien:ov.jenis_pasien,nilai_dasar:$('#bnv').value,ket:$('#bk').value};
+    if(manual){ q.persen={}; ii.forEach(i=>q.persen[i]=document.querySelector('.bp[data-i="'+i+'"]').value||0); }
+    if(!confirm('Verifikasi dan bagi fee untuk '+ii.length+' perujuk?')) return;
+    $('#bgo').disabled=true;
+    try{ const d=await api('verifyBagi',q); closeDlg(); toast('Fee dibagi ('+d.grup+')'); aVerif(); }catch(x){ $('#de').innerHTML=err(x); $('#bgo').disabled=false; }
+  };
+  prev(false);
+}
+async function mPorsi(){
+  const rows=await api('porsiList');
+  $('#mc').innerHTML=`<div class="msg inf">Dipakai saat <b>satu pasien dirujuk lebih dari satu perujuk</b> dan fee-nya dibagi. Isi bobot tiap kategori sesuai kebijakan RS. Bagian setiap perujuk dihitung dari bobot kategorinya dibagi jumlah bobot perujuk yang ikut, jadi total selalu 100%. Saat verifikasi, persen masih bisa disesuaikan manual untuk kasus tertentu.</div>
+  <div class="card"><form id="pof">${rows.map(r=>`<div class="item" style="align-items:center"><div><b>${esc(r.kategori)}</b></div><div class="r"><input name="${esc(r.kategori)}" type="number" min="0" max="100" step="any" value="${esc(r.bobot)}" style="width:80px;text-align:right"></div></div>`).join('')}
+  <div class="msg inf" id="pcx" style="margin-top:10px"></div><button class="btn" style="margin-top:6px">Simpan porsi</button></form></div>
+  <div class="card"><h3 style="margin-top:0">Contoh simulasi</h3><div id="sim" class="muted"></div></div>`;
+  const hit=()=>{
+    const v={}; document.querySelectorAll('#pof input').forEach(i=>v[i.name]=Number(i.value)||0);
+    const pairs=[['Dokter praktik mandiri','Driver siaga'],['Puskesmas / Faskes lain','Dokter praktik mandiri','Driver siaga']];
+    $('#sim').innerHTML=pairs.map(g=>{ const t=g.reduce((a,k)=>a+v[k],0); return t>0?'• '+g.map(k=>esc(k)+' <b>'+(Math.round(v[k]/t*1000)/10)+'%</b>').join(' + '):'• bobot semuanya 0'; }).join('<br>');
+    $('#pcx').textContent='Bobot hanya perbandingan, tidak harus berjumlah 100.';
+  };
+  document.querySelectorAll('#pof input').forEach(i=>i.oninput=hit); hit();
+  $('#pof').onsubmit=async ev=>{ ev.preventDefault(); try{ await api('porsiSave',{items:rows.map(r=>({kategori:r.kategori,bobot:document.querySelector('#pof input[name="'+r.kategori.replace(/"/g,'')+'"]').value}))}); toast('Porsi tersimpan'); }catch(x){ $('#pcx').className='msg err'; $('#pcx').textContent=x.message; } };
 }
 let RJ=[];
 async function aRujukan(){
@@ -423,11 +484,12 @@ async function aRujukan(){
   <div class="card tbl" id="lst"></div>`);
   const load=async()=>{ $('#lst').innerHTML='<div class="empty">Memuat…</div>'; try{
     const d=await api('rujukan',{status:$('#fs').value,id_perujuk:$('#fp').value,from:$('#ff').value,to:$('#ft').value,q:$('#fq').value}); RJ=d.rows;
-    $('#lst').innerHTML=d.rows.length?`<div class="muted" style="margin-bottom:6px">${d.total} data${d.total>d.rows.length?' (tampil '+d.rows.length+', persempit filter)':''}</div><table><tr><th>ID</th><th>Tgl</th><th>Pasien</th><th>Layanan</th><th>Jenis</th><th>Perujuk</th><th>Status</th><th class="n">Fee</th><th>Ganda</th><th></th></tr>${d.rows.map(r=>`<tr><td>${esc(r.id)}</td><td>${esc(r.tgl_kunjungan)}</td><td>${esc(r.nama_pasien)}${diAdmin(r)}</td><td>${esc(r.layanan)}</td><td>${esc(r.jenis_pasien)}</td><td>${esc(r.nama_perujuk)}</td><td>${badge(r.status)}</td><td class="n">${r.fee?rp(r.fee):'–'}</td><td>${r.mirip&&r.mirip.length?'<span class="badge b-warn">⚠ '+r.mirip.length+'</span> <small>'+esc(r.mirip.map(m=>m.nama_perujuk).join(', '))+'</small>':''}</td><td>${r.status==='BARU'||r.status==='DITOLAK'?'<button class="btn sec sm" data-del="'+esc(r.id)+'">Hapus</button>':''}</td></tr>`).join('')}</table>`:'<div class="empty">Tidak ada data</div>';
+    $('#lst').innerHTML=d.rows.length?`<div class="muted" style="margin-bottom:6px">${d.total} data${d.total>d.rows.length?' (tampil '+d.rows.length+', persempit filter)':''}</div><table><tr><th>ID</th><th>Tgl</th><th>Pasien</th><th>Layanan</th><th>Jenis</th><th>Perujuk</th><th>Status</th><th class="n">Fee</th><th>Ganda</th><th></th></tr>${d.rows.map(r=>`<tr><td>${esc(r.id)}</td><td>${esc(r.tgl_kunjungan)}</td><td>${esc(r.nama_pasien)}${diAdmin(r)}</td><td>${esc(r.layanan)}</td><td>${esc(r.jenis_pasien)}</td><td>${esc(r.nama_perujuk)}</td><td>${badge(r.status)}</td><td class="n">${r.fee?rp(r.fee):'–'}${r.grup?'<br><small class="muted">dibagi '+esc(r.porsi)+'%</small>':''}</td><td>${r.mirip&&r.mirip.length?'<span class="badge b-warn">⚠ '+r.mirip.length+'</span> <small>'+esc(r.mirip.map(m=>m.nama_perujuk).join(', '))+'</small>':''}</td><td>${r.status==='BARU'||r.status==='DITOLAK'?'<button class="btn sec sm" data-del="'+esc(r.id)+'">Hapus</button>':''}${r.grup&&r.status==='TERVERIFIKASI'?'<button class="btn sec sm" data-bg="'+esc(r.grup)+'">Batal bagi</button>':''}</td></tr>`).join('')}</table>`:'<div class="empty">Tidak ada data</div>';
+    document.querySelectorAll('#view [data-bg]').forEach(b=>b.onclick=async()=>{ if(!confirm('Batalkan pembagian '+b.dataset.bg+'? Semua rujukan dalam grup ini kembali ke status Menunggu.')) return; try{ await api('bagiBatal',{grup:b.dataset.bg}); toast('Pembagian dibatalkan'); load(); }catch(x){ toast(x.message); } });
     document.querySelectorAll('#view [data-del]').forEach(b=>b.onclick=async()=>{ if(!confirm('Hapus rujukan '+b.dataset.del+' secara permanen?')) return; try{ await api('rujukanDelete',{id:b.dataset.del}); toast('Rujukan dihapus'); load(); }catch(x){ toast(x.message); } });
   }catch(x){ $('#lst').innerHTML=err(x); } };
   $('#fgo').onclick=load; $('#fin').onclick=()=>openInputAdmin();
-  $('#fcsv').onclick=()=>{ if(!RJ.length) return toast('Tidak ada data'); csv(RJ,[['id','ID'],['tgl_kunjungan','Tgl Kunjungan'],['nama_pasien','Pasien'],['no_rm','No RM'],['jenis_pasien','Jenis Pasien'],['layanan','Layanan'],['id_perujuk','ID Perujuk'],['nama_perujuk','Perujuk'],['kategori_perujuk','Kategori'],['status','Status'],['nilai_dasar','Nilai Dasar'],['fee','Fee'],['id_pembayaran','ID Bayar'],['ket_ganda','Alasan Ganda']],'rujukan_'+todayStr()+'.csv'); };
+  $('#fcsv').onclick=()=>{ if(!RJ.length) return toast('Tidak ada data'); csv(RJ,[['id','ID'],['tgl_kunjungan','Tgl Kunjungan'],['nama_pasien','Pasien'],['no_rm','No RM'],['jenis_pasien','Jenis Pasien'],['layanan','Layanan'],['id_perujuk','ID Perujuk'],['nama_perujuk','Perujuk'],['kategori_perujuk','Kategori'],['status','Status'],['nilai_dasar','Nilai Dasar'],['fee','Fee'],['porsi','Porsi %'],['grup','Grup Bagi'],['id_pembayaran','ID Bayar'],['ket_ganda','Alasan Ganda']],'rujukan_'+todayStr()+'.csv'); };
   load();
 }
 function openInputAdmin(){ closeDlg(); go('input'); }
@@ -484,10 +546,10 @@ async function aRekap(){
 }
 let MT='perujuk';
 async function aMaster(){
-  view(`<h2>Master Data</h2><div class="tabs"><button data-m="perujuk" class="${MT==='perujuk'?'on':''}">Perujuk</button><button data-m="tarif" class="${MT==='tarif'?'on':''}">Tarif Fee</button><button data-m="admin" class="${MT==='admin'?'on':''}">Admin</button></div><div id="mc"></div>`);
+  view(`<h2>Master Data</h2><div class="tabs"><button data-m="perujuk" class="${MT==='perujuk'?'on':''}">Perujuk</button><button data-m="tarif" class="${MT==='tarif'?'on':''}">Tarif Fee</button><button data-m="porsi" class="${MT==='porsi'?'on':''}">Porsi</button><button data-m="admin" class="${MT==='admin'?'on':''}">Admin</button></div><div id="mc"></div>`);
   document.querySelectorAll('#view [data-m]').forEach(b=>b.onclick=()=>{MT=b.dataset.m;aMaster();});
   const mc=$('#mc'); mc.innerHTML='<div class="empty">Memuat…</div>';
-  if(MT==='perujuk') return mPerujuk(); if(MT==='tarif') return mTarif(); return mAdmin();
+  if(MT==='perujuk') return mPerujuk(); if(MT==='tarif') return mTarif(); if(MT==='porsi') return mPorsi(); return mAdmin();
 }
 async function mPerujuk(){
   const rows=await api('perujukList');
